@@ -1,0 +1,14 @@
+{
+  "name": "node-red-contrib-ui-prop-topic",
+  "version": "1.0.0",
+  "description": "Helps extract properties and set them back for ui components",
+  "author": "emulamer",
+  "license": "MIT",
+  "node-red": {
+      "nodes": {
+        "prop-to-topic": "prop-to-topic.js",
+        "topic-to-prop": "topic-to-prop.js"
+      }
+  }
+}
+ 
