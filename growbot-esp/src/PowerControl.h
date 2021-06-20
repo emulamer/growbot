@@ -18,6 +18,7 @@ const byte levelMap[] = {
 
 class PowerControl {
     private:
+        bool toggledOn[4];
         byte m_address;
         int m_targetIdx[4];
         int m_channelLevel[4];
@@ -66,7 +67,26 @@ class PowerControl {
                 this->timerRunning = false;
             }            
         }
-
+        void setChannelLevelInternal(byte portNum, int level) {
+            int idx = this->getIdx(portNum, level);
+            if (idx == this->m_targetIdx[portNum]) {
+                //don't do anything if it's set to the same index
+                return;
+            }
+            this->m_targetIdx[portNum] = idx;
+            if (idx == 0 || idx == 32 || this->m_calibrations[portNum].spinUpSec < 1) {
+                //just set it and cancel any previous spin up timer
+                this->spinUpEndStamp[portNum] = 0;
+                this->setChannelIdxDirect(portNum, idx);
+            } else if (this->spinUpEndStamp[portNum] == 0) {
+                this->setChannelIdxDirect(portNum, 32);
+                this->spinUpEndStamp[portNum] = millis() + (unsigned long)(this->m_calibrations[portNum].spinUpSec * 1000);
+                if (!this->timerRunning) {
+                    this->timerRunning = true;
+                    this->spinUpTimer.attach(1,  +[](PowerControl* instance) { instance->onTimerTick(); }, this);
+                }
+            }            
+        }
     public:
         PowerControl(byte address) {
             this->m_address = address;
@@ -77,6 +97,7 @@ class PowerControl {
                 this->m_calibrations[i].spinUpSec = 0;
                 this->m_targetIdx[i] = 32;            
                 this->m_channelLevel[i] = 100;
+                this->toggledOn[i] = true;
                 this->setChannelIdxDirect(i, 32);
                 if (this->m_calibrations[i].spinUpSec > 0) {
                     this->spinUpEndStamp[i] = millis() + (unsigned long)(this->m_calibrations[i].spinUpSec * 1000);
@@ -103,11 +124,22 @@ class PowerControl {
                 this->m_calibrations[port].minOffset = this->m_calibrations[port].maxOffset - 1;
             }
             if (updateLevel) {
-                
-                this->setChannelLevel(port, this->m_channelLevel[port]);
+                if (this->toggledOn[port]) {
+                    this->setChannelLevelInternal(port, this->m_channelLevel[port]);
+                } else {
+                    this->setChannelLevelInternal(port, 0);
+                }    
             }
         }
  
+        void setPowerToggle(byte portNum, bool on) {
+            if (this->toggledOn[portNum]) {
+                this->setChannelLevelInternal(portNum, this->m_channelLevel[portNum]);
+            } else {
+                this->setChannelLevelInternal(portNum, 0);
+            }
+        }
+
         void setChannelLevel(byte portNum, int level) {
             if (portNum > 3) {
                 return;
@@ -118,25 +150,12 @@ class PowerControl {
                 level = 0;
             }
             this->m_channelLevel[portNum] = level;
-            int idx = this->getIdx(portNum, level);
-            if (idx == this->m_targetIdx[portNum]) {
-                //don't do anything if it's set to the same index
-                return;
+            if (this->toggledOn[portNum]) {
+                this->setChannelLevelInternal(portNum, level);
+            } else {
+                this->setChannelLevelInternal(portNum, 0);
             }
-            this->m_targetIdx[portNum] = idx;
-            if (idx == 0 || idx == 32 || this->m_calibrations[portNum].spinUpSec < 1) {
-                //just set it and cancel any previous spin up timer
-                this->spinUpEndStamp[portNum] = 0;
-                this->setChannelIdxDirect(portNum, idx);
-            } else if (this->spinUpEndStamp[portNum] == 0) {
-                this->setChannelIdxDirect(portNum, 32);
-                this->spinUpEndStamp[portNum] = millis() + (unsigned long)(this->m_calibrations[portNum].spinUpSec * 1000);
-                if (!this->timerRunning) {
-                    this->timerRunning = true;
-                    this->spinUpTimer.attach(1,  +[](PowerControl* instance) { instance->onTimerTick(); }, this);
-                }
-            }            
-        }
+        }        
 };
 
 

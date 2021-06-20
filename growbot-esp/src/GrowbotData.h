@@ -30,10 +30,27 @@ struct PowerControlCalibration {
         return maxOffset - minOffset;
     }
 };
+
+
+#define EXHAUST_FAN_TOGGLE_BIT 0
+#define INTAKE_FAN_TOGGLE_BIT 1
+#define PUMP_TOGGLE_BIT 2
+#define ROOM_FANS_TOGGLE_BIT 3
+#define OVERHEAD_LIGHTS_TOGGLE_BIT 4
+#define SIDE_LIGHTS_TOGGLE_BIT 5
+
 struct GrowbotConfig {
     int exhaustFanPercent;
     int intakeFanPercent;
     int pumpPercent;
+    int roomFansPercent;
+    //these are bit flags for on/off for various things
+    bool exhaustFanOn;
+    bool intakeFanOn;
+    bool pumpOn;
+    bool roomFansOn;
+    bool overheadLightsOn;
+    bool sideLightsOn;
     WaterLevelCalibration controlWaterLevelCalibration;
     WaterLevelCalibration bucketWaterLevelCalibration[NUM_BUCKETS];
     PowerControlCalibration exhaustFanCalibration;
@@ -60,9 +77,6 @@ struct GrowbotData {
     BucketData buckets[NUM_BUCKETS];
 };
 
-
-
- 
 struct GrowbotState {
     int current_mode;
     GrowbotConfig config;
@@ -70,205 +84,3 @@ struct GrowbotState {
 };
 
 #endif
-
-/* node red parsing code:
-msg.payload = {
-        timestamp: Date.now(),
-        config: {
-            exhaustFanPercent: msg.payload.readUInt8(0),
-            intakeFanPercent: msg.payload.readUInt8(1),
-            pumpPercent: msg.payload.readUInt8(2),
-            controlWaterLevelCalibration : {
-                fullCm: msg.payload.readUInt32LE(4),
-                emptyCm: msg.payload.readUInt32LE(8)
-                },
-            bucketWaterLevelCalibration: [
-                {
-                    fullCm: msg.payload.readUInt32LE(12),
-                    emptyCm: msg.payload.readUInt32LE(16)
-                },
-                {
-                    fullCm: msg.payload.readUInt32LE(20),
-                    emptyCm: msg.payload.readUInt32LE(24)
-                    },
-                {
-                    fullCm: msg.payload.readUInt32LE(28),
-                    emptyCm: msg.payload.readUInt32LE(32)
-                },
-                {
-                    fullCm: msg.payload.readUInt32LE(36),
-                    emptyCm: msg.payload.readUInt32LE(40)
-                },
-                ],
-                exhaustFanCalibration: {
-                    minOffset: msg.payload.readUInt8(44),
-                    maxOffset: msg.payload.readUInt8(45)
-                },
-                intakeFanCalibration: {
-                    minOffset: msg.payload.readUInt8(46),
-                    maxOffset: msg.payload.readUInt8(47)
-                },
-                pumpCalibration: {
-                    minOffset: msg.payload.readUInt8(48),
-                    maxOffset: msg.payload.readUInt8(49)
-                }
-                
-            },
-            data: {
-                exhaustInternal: {
-                    temperatureC: msg.payload.readFloatLE(52),
-                    humidity: msg.payload.readFloatLE(56)
-                },
-                intakeInternal: {
-                    temperatureC: msg.payload.readFloatLE(60),
-                    humidity: msg.payload.readFloatLE(64)
-                },
-                intakeExternal: {
-                    temperatureC: msg.payload.readFloatLE(68),
-                    humidity: msg.payload.readFloatLE(72)
-                },
-                ambientInternal: {
-                    temperatureC: msg.payload.readFloatLE(76),
-                    humidity: msg.payload.readFloatLE(80)
-                },
-                waterData: {
-                    ph: msg.payload.readFloatLE(84),
-                    tds: msg.payload.readFloatLE(88)
-                },
-                controlBucket: {
-                    temperatureC: msg.payload.readFloatLE(92),
-                    waterLevelPercent: msg.payload.readInt32LE(96)
-                },
-                buckets: [
-                    {
-                        temperatureC: msg.payload.readFloatLE(100),
-                        waterLevelPercent: msg.payload.readInt32LE(104)
-                    },
-                    {
-                        temperatureC: msg.payload.readFloatLE(108),
-                        waterLevelPercent: msg.payload.readInt32LE(112)
-                    },
-                    {
-                        temperatureC: msg.payload.readFloatLE(116),
-                        waterLevelPercent: msg.payload.readInt32LE(120)
-                    },
-                    {
-                        temperatureC: msg.payload.readFloatLE(124),
-                        waterLevelPercent: msg.payload.readInt32LE(128)
-                    }
-                ]
-            }
-        }
-    
-return msg;
-
-var offset = 0;
-
-var readbyte = function(extraOffset) {
-    var val = msg.payload.readUInt8(offset);
-    offset++;
-    if (extraOffset) {
-        offset += extraOffset;
-    }
-    return val;
-}
-var readint = function() {
-    var val = msg.payload.readUInt32LE(offset);
-    offset += 4;
-    return val;
-}
-var readfloat = function() {
-    var val = msg.payload.readFloatLE(offset);
-    offset += 4;
-    return val;
-}
-msg.payload = {
-        timestamp: Date.now(),
-        current_mode: readbyte(),
-        config: {
-            exhaustFanPercent: readbyte(),
-            intakeFanPercent: readbyte(),
-            pumpPercent: readbyte(1),
-            controlWaterLevelCalibration : {
-                fullCm: readint(),
-                emptyCm: readint()
-                },
-            bucketWaterLevelCalibration: [
-                {
-                    fullCm: readint(),
-                    emptyCm: readint()
-                },
-                {
-                    fullCm: readint(),
-                    emptyCm: readint()
-                    },
-                {
-                    fullCm: readint(),
-                    emptyCm: readint()
-                },
-                {
-                    fullCm: readint(),
-                    emptyCm: readint()
-                },
-                ],
-                exhaustFanCalibration: {
-                    minOffset: readbyte(),
-                    maxOffset: readbyte()
-                },
-                intakeFanCalibration: {
-                    minOffset: readbyte(),
-                    maxOffset: readbyte()
-                },
-                pumpCalibration: {
-                    minOffset: readbyte(),
-                    maxOffset: readbyte()
-                }
-                
-            },
-            data: {
-                exhaustInternal: {
-                    temperatureC: readfloat(),
-                    humidity: readfloat()
-                },
-                intakeInternal: {
-                    temperatureC: readfloat(),
-                    humidity: readfloat()
-                },
-                intakeExternal: {
-                    temperatureC: readfloat(),
-                    humidity: readfloat()
-                },
-                ambientInternal: {
-                    temperatureC: readfloat(),
-                    humidity: readfloat()
-                },
-                waterData: {
-                    ph: readfloat(),
-                    tds: readfloat()
-                },
-                controlBucket: {
-                    temperatureC: readfloat(),
-                    waterLevelPercent: readfloat()
-                },
-                buckets: [
-                    {
-                        temperatureC: readfloat(),
-                        waterLevelPercent: readfloat()
-                    },
-                    {
-                        temperatureC: readfloat(),
-                        waterLevelPercent: readfloat()
-                    },
-                    {
-                        temperatureC: readfloat(),
-                        waterLevelPercent: readfloat()
-                    },
-                    {
-                        temperatureC: readfloat(),
-                        waterLevelPercent: readfloat()
-                    }
-                ]
-            }
-        }
-    
-return msg;*/

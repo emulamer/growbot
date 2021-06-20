@@ -41,6 +41,9 @@ class BME280Sensor : public TempHumiditySensor {
             }
         }
         bool read(TempHumidity &output) {
+            if (this->isMultiplexer) {
+                this->plexer->setBus(this->busNum);
+            }
             if (!this->isOk) {
                 this->isOk = (this->bme.begin() != 0);
             }

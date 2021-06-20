@@ -93,6 +93,8 @@ class WaterLevel
         
         float readLevelPercent() {
             int cmDist = this->readAverage();
+            Serial.print("cm dist");
+            Serial.println(cmDist);
             if (cmDist == NAN || cmDist < 1 || cmDist > 100) {
                 return NAN;
             }

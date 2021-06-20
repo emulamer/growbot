@@ -11,7 +11,7 @@
 #define MQTT_CONFIG_TOPIC "GROWBOT_CONFIG"
 
 // version of the GrowbotConfig in eeprom, change if GrowbotConfic struct changes
-#define CONFIG_VERSION 3
+#define CONFIG_VERSION 1
 
 // I2C
 #define I2C_POWER_CTL_ADDR 0x27

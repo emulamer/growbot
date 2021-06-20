@@ -1,6 +1,6 @@
 #include <WiFi.h>
 #include <Ticker.h>
-
+#include <ArduinoOTA.h>
 #ifndef WIFIMANAGER_H
 #define WIFIMANAGER_H
 class WifiManager {
@@ -24,6 +24,8 @@ class WifiManager {
         void onWifiGotIP(WiFiEvent_t event) {
             Serial.print("Wifi got IP ");
             Serial.println(WiFi.localIP().toString());  
+            ArduinoOTA.begin();
+            Serial.println("Started up OTA update listener");
         }
 
         void onWifiDisconnect(WiFiEvent_t event) {

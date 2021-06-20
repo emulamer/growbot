@@ -16,6 +16,7 @@
 #include "Config.h" //all the config stuff is in here
 #include "LuxSensor.h"
 #include "DebugUtils.h"
+#include <ArduinoOTA.h>
 #define GROWBOT_MODE_NORMAL 0x0
 #define GROWBOT_MODE_CALIBRATING_PH_SENSOR 0x20
 #define GROWBOT_MODE_CALIBRATING_TDS_SENSOR 0x21
@@ -47,13 +48,13 @@ WaterLevel wlControlBucket = WaterLevel(&i2cMultiplexer, WL_CONTROL_BUCKET_MULTI
 WaterLevel* wlBuckets[NUM_BUCKETS];
 
 //ambient temp/humidity sensors
-SHTC3Sensor thInnerExhaust = SHTC3Sensor(&i2cMultiplexer, 0);
-SHTC3Sensor thInnerIntake = SHTC3Sensor(&i2cMultiplexer, 1);
+BME280Sensor thInnerExhaust = BME280Sensor(&i2cMultiplexer, 0);
+BME280Sensor thInnerIntake = BME280Sensor(&i2cMultiplexer, 1);
 SHTC3Sensor thOuterIntake = SHTC3Sensor(&i2cMultiplexer, 2);
 SHTC3Sensor thOuterExhaust = SHTC3Sensor(&i2cMultiplexer, 3);
 BME280Sensor thInnerAmbient1 = BME280Sensor(&i2cMultiplexer, 4);
 BME280Sensor thInnerAmbient2 = BME280Sensor(&i2cMultiplexer, 5);
-BME280Sensor thInnerAmbient3 = BME280Sensor(&i2cMultiplexer, 6);
+SHTC3Sensor thInnerAmbient3 = SHTC3Sensor(&i2cMultiplexer, 6);
 BME280Sensor thLights = BME280Sensor(&i2cMultiplexer, 7);
 
 //lux sensors (built into the BME280 modules)
@@ -81,7 +82,12 @@ void updateFromConfig() {
   //set power levels
   powerCtl.setChannelLevel(POWER_EXHAUST_FAN_PORT, config.exhaustFanPercent);
   powerCtl.setChannelLevel(POWER_INTAKE_FAN_PORT, config.intakeFanPercent);
-  powerCtl.setChannelLevel(POWER_PUMP_PORT, config.pumpPercent);  
+  powerCtl.setChannelLevel(POWER_PUMP_PORT, config.pumpPercent);
+
+  //set on/off toggles
+  powerCtl.setPowerToggle(POWER_EXHAUST_FAN_PORT, config.exhaustFanOn);
+  powerCtl.setPowerToggle(POWER_INTAKE_FAN_PORT, config.intakeFanOn);
+  powerCtl.setPowerToggle(POWER_PUMP_PORT, config.pumpOn);
 }
 
 void loadConfig() {
@@ -105,6 +111,12 @@ void loadConfig() {
     config.pumpCalibration.maxOffset = 30;
     config.pumpCalibration.minOffset = 1;
     config.samplingIntervalMS = 10000;
+    config.pumpOn = true;
+    config.exhaustFanOn = true;
+    config.intakeFanOn = true;
+    config.overheadLightsOn = true;
+    config.pumpOn = true;
+    config.sideLightsOn = true;
   } else {
     EEPROM_readAnything<GrowbotConfig>(1, config);
   }
@@ -199,9 +211,10 @@ void readWaterTempSensors() {
 
 void readWaterLevelSensors() {
   data.controlBucket.waterLevelPercent = wlControlBucket.readLevelPercent();
-  for (byte i = 0; i < NUM_BUCKETS; i++) {
-    data.buckets[i].waterLevelPercent = wlBuckets[i]->readLevelPercent();
-  }
+  //TODO: disabled for now, it's slow
+  // for (byte i = 0; i < NUM_BUCKETS; i++) {
+  //   data.buckets[i].waterLevelPercent = wlBuckets[i]->readLevelPercent();
+  // }
 }
 
 void readTempHumiditySensors() {
@@ -266,6 +279,33 @@ void setup() {
   EEPROM.begin(512);
   Serial.begin(9600);
   Serial.println("Growbot v.01 starting up...");
+  ArduinoOTA.setPort(3232);
+  ArduinoOTA
+    .onStart([]() {
+      String type;
+      if (ArduinoOTA.getCommand() == U_FLASH)
+        type = "sketch";
+      else // U_SPIFFS
+        type = "filesystem";
+
+      // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
+      Serial.println("Start updating " + type);
+    })
+    .onEnd([]() {
+      Serial.println("\nEnd");
+    })
+    .onProgress([](unsigned int progress, unsigned int total) {
+      Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+    })
+    .onError([](ota_error_t error) {
+      Serial.printf("Error[%u]: ", error);
+      if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+      else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+      else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+      else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+      else if (error == OTA_END_ERROR) Serial.println("End Failed");
+    });
+
 
   Serial.print("Loading config...");
   loadConfig();
@@ -286,9 +326,20 @@ void setup() {
   Serial.println("started.");
 //  Serial2.begin(9600);
 }
-
+TempHumidity th;
 
 void loop() {
+  ArduinoOTA.handle();
+  // thInnerIntake.read(th);
+  // Serial.println("inner intake (1)");
+  // Serial.println(th.temperatureC);
+  // Serial.println(th.humidity);
+  // thInnerAmbient1.read(th);
+  // Serial.println("inner ambient (4)");
+  // Serial.println(th.temperatureC);
+  // Serial.println(th.humidity);
+  // delay(1000);
+  // return;
   // debug_find_onewire_sensors(oneWire);
   // delay(1000);
   // return;
@@ -302,6 +353,8 @@ void loop() {
   // return;
   // debug_scan_i2c();
   // delay(2000);
+  // return;
+  // wlControlBucket.readLevelPercent();
   // return;
   // Wire.beginTransmission(0x57);
   // Wire.write(1);
