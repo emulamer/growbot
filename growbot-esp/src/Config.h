@@ -11,7 +11,9 @@
 #define MQTT_CONFIG_TOPIC "GROWBOT_CONFIG"
 
 // version of the GrowbotConfig in eeprom, change if GrowbotConfic struct changes
-#define CONFIG_VERSION 1
+#define CONFIG_VERSION 5
+
+#define NUM_BUCKETS 0
 
 // I2C
 #define I2C_POWER_CTL_ADDR 0x27
@@ -28,18 +30,49 @@
 //ultrasonic water level config
 
 #define WL_CONTROL_BUCKET_MULTIPLEXER_PORT 0
-//the buckets aren't really set up
-#define WL_BUCKET_ONE_MULTIPLEXER_PORT 1
-#define WL_BUCKET_TWO_MULTIPLEXER_PORT 2
-#define WL_BUCKET_THREE_MULTIPLEXER_PORT 3
-#define WL_BUCKET_FOUR_MULTIPLEXER_PORT 4
+
+#define WL_BUCKET_MULTIPLEXER_PORTS [ 1, 2, 3, 4 ]
  
 //onewire submerged water temp sensors
-#define ONEWIRE_PIN 15
-#define WT_CONTROL_BUCKET_ADDRESS {0x28, 0x79, 0xFC, 0x76, 0xE0, 0x01, 0x3C, 0x28}
-#define WT_BUCKET_1_ADDRESS {0, 1, 2, 3, 4, 5, 6, 7}
-#define WT_BUCKET_2_ADDRESS {0, 1, 2, 3, 4, 5, 6, 7}
-#define WT_BUCKET_3_ADDRESS {0, 1, 2, 3, 4, 5, 6, 7}
-#define WT_BUCKET_4_ADDRESS {0, 1, 2, 3, 4, 5, 6, 7}
+#define ONEWIRE_PIN 25
+#define WT_CONTROL_BUCKET_ADDRESS {0x28, 0x79, 0x6F, 0x76, 0xE0, 0x01, 0x3C, 0xD1}
+#define WT_BUCKET_ADDRESSES {0x28, 0x79, 0xFC, 0x76, 0xE0, 0x01, 0x3C, 0x28},\
+                            {0, 1, 2, 3, 4, 5, 6, 7},\
+                            {0, 1, 2, 3, 4, 5, 6, 7},\
+                            {0, 1, 2, 3, 4, 5, 6, 7}
+
+//sensor types and i2c multiplexor port assignments
+#define INNER_EXHAUST_TYPE BME280Sensor
+#define INNER_EXHAUST_MX_PORT 0
+
+#define INNER_INTAKE_TYPE BME280Sensor
+#define INNER_INTAKE_MX_PORT 1
+
+#define OUTER_EXHAUST_TYPE SHTC3Sensor
+#define OUTER_EXHAUST_MX_PORT 3
+
+#define OUTER_INTAKE_TYPE SHTC3Sensor
+#define OUTER_INTAKE_MX_PORT 2
+
+#define INNER_AMBIENT_1_TYPE BME280Sensor
+#define INNER_AMBIENT_1_MX_PORT 4
+
+#define INNER_AMBIENT_2_TYPE BME280Sensor
+#define INNER_AMBIENT_2_MX_PORT 5
+
+// #define INNER_AMBIENT_3_TYPE SHTC3Sensor
+// #define INNER_AMBIENT_3_MX_PORT 6
+
+// #define LIGHTS_TEMP_TYPE BME280Sensor
+// #define INNER_LIGHTS_MX_PORT 7
+
+// lux sensor mutliplexer ports.  lux sensor is part of the GY-39 BME280 modules
+#define LUX_SENSOR_1_MX_PORT INNER_EXHAUST_MX_PORT
+#define LUX_SENSOR_2_MX_PORT INNER_INTAKE_MX_PORT
+#define LUX_SENSOR_3_MX_PORT INNER_AMBIENT_1_MX_PORT
+#define LUX_SENSOR_4_MX_PORT INNER_AMBIENT_2_MX_PORT
+// #define LUX_SENSOR_5_MX_PORT INNER_LIGHTS_MX_PORT
+
+
 
 #endif

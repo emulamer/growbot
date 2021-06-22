@@ -2,7 +2,7 @@
 #include <Wire.h>
 #include <Ticker.h>
 #include "GrowbotData.h"
-
+#include "DebugUtils.h"
 #ifndef POWERCONTROL_H
 #define POWERCONTROL_H
 
@@ -26,6 +26,7 @@ class PowerControl {
         Ticker spinUpTimer;
         unsigned long spinUpEndStamp[4];
         bool timerRunning;
+        bool doingSomething = false;
 
         int getIdx(byte portNum, int level) {
             int idx = 0;
@@ -40,6 +41,7 @@ class PowerControl {
             return idx;
         }
         void setChannelIdxDirect(byte portNum, int idx) {
+       //     dbg.printf("DIRECT: %d => %d\r\n", portNum, idx);
             byte portAddr = portNum + PORT_ADDR_OFFSET;
             byte val = levelMap[idx];
             Wire.beginTransmission(this->m_address);
@@ -48,44 +50,69 @@ class PowerControl {
             Wire.endTransmission();
         }
         void onTimerTick() {
-            Serial.println("power timer tick");
+            //dbg.println("power timer tick");
+            if (doingSomething) {
+          //      dbg.print("\t\ttmr: in use, skip\r\n");
+                return;
+            }
             bool stopTimer = true;
             for (byte i = 0; i < 4; i++) {
                 if (this->spinUpEndStamp[i] > 0) {
+                    // dbg.print(i);
+                    // dbg.print("endstamp is ");
+                    // dbg.print(this->spinUpEndStamp[i]);
+                    // dbg.print(" current millis is ");
+                    // dbg.println(millis());
                     if (this->spinUpEndStamp[i] < millis()) {
-                        Serial.println("doing a thing for power timer");
+                        dbg.printf("\t\tpowertmr: setting %d => %d\r\n", i, this->m_targetIdx[i]);
                         this->setChannelIdxDirect(i, this->m_targetIdx[i]);
                         this->spinUpEndStamp[i] = 0;
                     } else {
+                        //dbg.printf("\t\ttmr: port %d still in future\r\n", i);
                         stopTimer = false;
                     }
                 }
             }
             if (stopTimer) {
-                Serial.println("power timer stopping");
+            //    dbg.println("\t\ttmr: timer stopping");
                 this->spinUpTimer.detach();
                 this->timerRunning = false;
             }            
         }
         void setChannelLevelInternal(byte portNum, int level) {
+            doingSomething = true;
+        //    dbg.printf("\tint: setting channel %d => %d pct\r\n", portNum, level);
             int idx = this->getIdx(portNum, level);
-            if (idx == this->m_targetIdx[portNum]) {
-                //don't do anything if it's set to the same index
-                return;
-            }
+        //     if (idx == this->m_targetIdx[portNum]) {
+        //    //     dbg.print("\tint: already set\r\n");
+        //         //don't do anything if it's set to the same index
+        //         doingSomething = false;
+        //         return;
+        //     }
+            bool coldStart = this->m_targetIdx[portNum] == 0 && this->spinUpEndStamp[portNum] == 0;
             this->m_targetIdx[portNum] = idx;
             if (idx == 0 || idx == 32 || this->m_calibrations[portNum].spinUpSec < 1) {
                 //just set it and cancel any previous spin up timer
+             //   dbg.print("\tint: idx is max or min or it has no spin up sec\r\n");
                 this->spinUpEndStamp[portNum] = 0;
                 this->setChannelIdxDirect(portNum, idx);
-            } else if (this->spinUpEndStamp[portNum] == 0) {
+            } else if (coldStart) {
+            //    dbg.printf("\tint: doing timer set for port %d to idx %d after spinupsec %d\r\n", portNum, idx, this->m_calibrations[portNum].spinUpSec);
                 this->setChannelIdxDirect(portNum, 32);
                 this->spinUpEndStamp[portNum] = millis() + (unsigned long)(this->m_calibrations[portNum].spinUpSec * 1000);
+             //   dbg.printf("\tint: current stamp %d, target stamp %d\r\n", millis(), this->spinUpEndStamp[portNum]);
                 if (!this->timerRunning) {
+             //       dbg.printf("\tint: starting timer\r\n");
                     this->timerRunning = true;
                     this->spinUpTimer.attach(1,  +[](PowerControl* instance) { instance->onTimerTick(); }, this);
+                } else {
+             //       dbg.printf("\tint: timer already running\r\n");
                 }
-            }            
+            } else if (this->spinUpEndStamp[portNum] == 0) {
+            //    dbg.print("\tint: not a cold start, direct set\r\n");
+                this->setChannelIdxDirect(portNum, idx);
+            }
+            doingSomething = false;
         }
     public:
         PowerControl(byte address) {
@@ -95,8 +122,8 @@ class PowerControl {
                 this->m_calibrations[i].maxOffset = 31;
                 this->m_calibrations[i].minOffset = 1;
                 this->m_calibrations[i].spinUpSec = 0;
-                this->m_targetIdx[i] = 32;            
-                this->m_channelLevel[i] = 100;
+                this->m_targetIdx[i] = 0;            
+                this->m_channelLevel[i] = 0;
                 this->toggledOn[i] = true;
                 this->setChannelIdxDirect(i, 32);
                 if (this->m_calibrations[i].spinUpSec > 0) {
@@ -151,8 +178,10 @@ class PowerControl {
             }
             this->m_channelLevel[portNum] = level;
             if (this->toggledOn[portNum]) {
+                dbg.printf("power set port %d to level %d\r\n", portNum, level);
                 this->setChannelLevelInternal(portNum, level);
             } else {
+                dbg.printf("power set port %d to level %d, but power toggle is off\r\n", portNum, level);
                 this->setChannelLevelInternal(portNum, 0);
             }
         }        

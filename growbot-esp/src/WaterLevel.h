@@ -2,7 +2,7 @@
 #include "I2CMultiplexer.h"
 #ifndef WATERLEVEL_H
 #define WATERLEVEL_H
-
+#include "DebugUtils.h"
 #define ULTRASONIC_I2C_ADDR 0x57
 struct WaterLevelCalibration {
     //centimeters of distance when bucket is full
@@ -93,8 +93,8 @@ class WaterLevel
         
         float readLevelPercent() {
             int cmDist = this->readAverage();
-            Serial.print("cm dist");
-            Serial.println(cmDist);
+            dbg.print("cm dist");
+            dbg.println(cmDist);
             if (cmDist == NAN || cmDist < 1 || cmDist > 100) {
                 return NAN;
             }

@@ -2,7 +2,7 @@
 #include <Ezo_i2c.h> 
 #include "GrowbotData.h"
 #include "I2CMultiplexer.h"
-
+#include "DebugUtils.h"
 #ifndef EZOSENSOR_H
 #define EZOSENSOR_H
 #define EZO_BUFFER_LEN 41
@@ -32,9 +32,7 @@ class EzoSensor {
             if (status == Ezo_board::errors::SUCCESS) {
                 return true;
             } else {
-                Serial.print(this->name);
-                Serial.print(": sensor receive command failed with status code ");
-                Serial.println(status);
+                dbg.printf("%s: sensor receive command failed with status code %d", this->name, status);
                 return false;
             }
         }
@@ -45,19 +43,22 @@ class EzoSensor {
             if (!this->isOk) {
                 return NAN;
             }
-            this->doPlex();
-            snprintf(this->buffer, EZO_BUFFER_LEN, "RT,%f", waterTempC);
-            this->board->send_cmd(this->buffer);
-            delay(900);
-            if (!this->recCheck()) {
-                Serial.print(this->name);
-                Serial.println(": read with temperature compensation failed!");
-                return NAN;
+            bool readGood = false;
+            for (byte i = 0; i < 3; i++) {
+                this->doPlex();
+                snprintf(this->buffer, EZO_BUFFER_LEN, "RT,%f", waterTempC);
+                this->board->send_cmd(this->buffer);
+                delay(900);
+                if (!this->recCheck()) {
+                    dbg.printf("%s: read with temperature compensation failed!  retry %d", this->name, i);
+                    dbg.println();
+                    readGood = false;
+                } else {
+                    readGood = true;
+                    break;
+                }
             }
-            Serial.print("sensor ");
-            Serial.print(this->name);
-            Serial.print(" responded with ");
-            Serial.println(this->buffer);
+            dbg.printf("sensor %s responded with %s", this->name, this->buffer);
             float val = atof(this->buffer);
             return val;
         }
@@ -66,14 +67,24 @@ class EzoSensor {
                 return false;
             }
             this->doPlex();
-            snprintf(this->buffer, EZO_BUFFER_LEN, "cal,%s,%f", (point == EZO_CALIBRATE_MID)?"mid":((point == EZO_CALIBRATE_LOW)?"low":((point == EZO_CALIBRATE_DRY)?"dry":"high")), reference);
-            this->board->send_cmd(this->buffer);
-            delay(900);
-            if (!this->recCheck()) {
-                Serial.println("set calibration point failed!");
-                return false;
+            bool success = false;
+            for (byte i = 0; i < 15; i++) {
+                if (point == EZO_CALIBRATE_DRY) {
+                    snprintf(this->buffer, EZO_BUFFER_LEN, "cal,dry");
+                } else {
+                    snprintf(this->buffer, EZO_BUFFER_LEN, "cal,%s,%f", (point == EZO_CALIBRATE_MID)?"mid":((point == EZO_CALIBRATE_LOW)?"low":((point == EZO_CALIBRATE_DRY)?"dry":"high")), reference);
+                }
+                
+                this->board->send_cmd(this->buffer);
+                delay(900);
+                if (!this->recCheck()) {
+                    dbg.println("set calibration point failed!  Trying again...");
+                } else {
+                    success = true;
+                    break;
+                }
             }
-            return true;
+            return success;
         }
         
     public:
@@ -97,13 +108,10 @@ class EzoSensor {
             this->board->send_cmd("Status");
             delay(300);
             if (this->recCheck()) {
-                Serial.print(this->name);
-                Serial.print(": sensor responded with: ");
-                Serial.println(this->buffer);
+                dbg.printf("%s: sensor responded with: %s\n", this->name, this->buffer);
                 this->isOk = true;
             } else {
-                Serial.print(this->name);
-                Serial.print(": sensor failed init");
+                dbg.printf("%s: sensor failed init\n", this->name);
                 this->isOk = false;
             }
         }

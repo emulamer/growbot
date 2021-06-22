@@ -1,6 +1,7 @@
 #include <WiFi.h>
 #include <Ticker.h>
 #include <ArduinoOTA.h>
+#include "DebugUtils.h"
 #ifndef WIFIMANAGER_H
 #define WIFIMANAGER_H
 class WifiManager {
@@ -14,22 +15,24 @@ class WifiManager {
                 WiFi.mode(WIFI_STA);
                 WiFi.begin(this->ssid, this->password);
             } else {
-                Serial.println("Wifi tried reconnecting while already connected, ignoring...");
+                dbg.println("Wifi tried reconnecting while already connected, ignoring...");
             }
         }
 
         void onWifiConnect(WiFiEvent_t event, WiFiEventInfo_t info) {
-            Serial.println("Wifi connected, waiting for IP...");
+            dbg.println("Wifi connected, waiting for IP...");
         }
         void onWifiGotIP(WiFiEvent_t event) {
-            Serial.print("Wifi got IP ");
-            Serial.println(WiFi.localIP().toString());  
+            dbg.print("Wifi got IP ");
+            dbg.println(WiFi.localIP().toString());  
             ArduinoOTA.begin();
-            Serial.println("Started up OTA update listener");
+            dbg.println("Started up OTA update listener");
+            dbg.wifiIsReady();
+            dbg.println("Set wifi ready for debug");
         }
 
         void onWifiDisconnect(WiFiEvent_t event) {
-            Serial.println("Wifi disconnected");
+            dbg.println("Wifi disconnected");
             wifiReconnectTimer.once(6, +[](WifiManager* instance) { instance->connectWifi(); }, this);
         }
 

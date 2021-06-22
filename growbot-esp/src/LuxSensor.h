@@ -3,6 +3,7 @@
 #include "I2CMultiplexer.h"
 #include "GrowbotData.h"
 #include <Max44009.h>
+#include "DebugUtils.h"
 #ifndef LUXSENSOR_H
 #define LUXSENSOR_H
 
@@ -17,7 +18,7 @@ class LuxSensor {
 
 class Max44009Sensor : public LuxSensor {
     private:
-        Max44009 myLux = Max44009(false);
+        Max44009 myLux = Max44009(0x4a, Max44009::Boolean::False);
         bool isOk;
         I2CMultiplexer* plexer;
         byte busNum;
@@ -40,8 +41,8 @@ class Max44009Sensor : public LuxSensor {
             int err = this->myLux.getError();
             if (err != 0)
             {
-                Serial.print("failed to init lux sensor: ");
-                Serial.println(err);
+                dbg.print("failed to init lux sensor: ");
+                dbg.println(err);
                 this->isOk = false;
             } else {
                 this->isOk = true;
@@ -58,15 +59,12 @@ class Max44009Sensor : public LuxSensor {
                 this->plexer->setBus(this->busNum);
             }
             float lux = myLux.getLux();
-            int err = myLux.getError();
-            if (err != 0)
-            {
-                Serial.print("lux sensor failed to read: ");
-                Serial.println(err);
+            dbg.printf("lux sensor returned value %f\r\n", lux);
+            if (lux < 0) {
+                dbg.printf("lux sensor read error, code: %f\r\n", lux);
                 return NAN;
-            } else {
-                return lux;
             }
+            return lux;
         }
 };
 

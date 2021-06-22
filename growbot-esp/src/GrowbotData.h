@@ -4,7 +4,9 @@
 #ifndef GROWBOTDATA_H
 #define GROWBOTDATA_H
 
-#define NUM_BUCKETS 4
+//note: data struct currently accounts for 4 buckets, when they're hooked up make this NUM_BUCKETS
+#define DATA_BUCKET_COUNT 4
+
 struct WaterData {
     float ph;
     float tds;
@@ -32,13 +34,6 @@ struct PowerControlCalibration {
 };
 
 
-#define EXHAUST_FAN_TOGGLE_BIT 0
-#define INTAKE_FAN_TOGGLE_BIT 1
-#define PUMP_TOGGLE_BIT 2
-#define ROOM_FANS_TOGGLE_BIT 3
-#define OVERHEAD_LIGHTS_TOGGLE_BIT 4
-#define SIDE_LIGHTS_TOGGLE_BIT 5
-
 struct GrowbotConfig {
     int exhaustFanPercent;
     int intakeFanPercent;
@@ -52,7 +47,7 @@ struct GrowbotConfig {
     bool overheadLightsOn;
     bool sideLightsOn;
     WaterLevelCalibration controlWaterLevelCalibration;
-    WaterLevelCalibration bucketWaterLevelCalibration[NUM_BUCKETS];
+    WaterLevelCalibration bucketWaterLevelCalibration[DATA_BUCKET_COUNT];
     PowerControlCalibration exhaustFanCalibration;
     PowerControlCalibration intakeFanCalibration;
     PowerControlCalibration pumpCalibration;
@@ -72,9 +67,10 @@ struct GrowbotData {
     float luxAmbient2;
     float luxAmbient3;
     float luxAmbient4;
+    float luxAmbient5;
     WaterData waterData;
     BucketData controlBucket;
-    BucketData buckets[NUM_BUCKETS];
+    BucketData buckets[DATA_BUCKET_COUNT];
 };
 
 struct GrowbotState {

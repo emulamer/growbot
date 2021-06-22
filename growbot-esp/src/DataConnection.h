@@ -2,7 +2,7 @@
 #include <Ticker.h>
 #include <AsyncMqttClient.h>
 #include <WiFi.h>
-
+#include "DebugUtils.h"
 #ifndef DATACONNECTION_H
 #define DATACONNECTION_H
 
@@ -39,19 +39,19 @@ class MQTTDataConnection : public DataConnection {
         std::vector<std::function<void(GrowbotConfig &newConfig)>> onNewConfigCallbacks;
 
         void connectMqtt() {
-            Serial.println("connectMqtt..");
+            dbg.println("connectMqtt..");
             if (!this->mqttClient.connected() && WiFi.isConnected()) {
-                Serial.print("Connecting MQTT to");
-                Serial.print(this->mqttHost);
-                Serial.print(":");
-                Serial.print(this->mqttPort);
-                Serial.println("...");
+                dbg.print("Connecting MQTT to");
+                dbg.print(this->mqttHost);
+                dbg.print(":");
+                dbg.print(this->mqttPort);
+                dbg.println("...");
                 this->mqttClient.connect();
             } else {
                 if (this->mqttClient.connected()) {
-                    Serial.println("MQTT already connected");
+                    dbg.println("MQTT already connected");
                 } else {
-                    Serial.println("MQTT not in a state to connect, probably Wifi is not ready.");
+                    dbg.println("MQTT not in a state to connect, probably Wifi is not ready.");
                 }
                 
             }
@@ -60,77 +60,77 @@ class MQTTDataConnection : public DataConnection {
             this->connectMqtt();
         }
         void onMqttConnect(bool sessionPresent) {
-            Serial.print("MQTT connected, subscribing to ");
-            Serial.println(this->mqttListenTopic);
+            dbg.print("MQTT connected, subscribing to ");
+            dbg.println(this->mqttListenTopic);
             this->mqttClient.subscribe(this->mqttListenTopic, 1);
         }
         void onMqttDisconnect(AsyncMqttClientDisconnectReason reason) {
-            Serial.println("Disconnected from MQTT.");
+            dbg.println("Disconnected from MQTT.");
 
             if (WiFi.isConnected()) {
                 this->mqttReconnectTimer.once(2, +[](MQTTDataConnection* instance) { instance->connectMqtt(); }, this);
             }
         }
         void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total) {
-            Serial.println("Publish received.");
-            Serial.print("  topic: ");
-            Serial.println(topic);
-            Serial.print("  qos: ");
-            Serial.println(properties.qos);
-            Serial.print("  dup: ");
-            Serial.println(properties.dup);
-            Serial.print("  retain: ");
-            Serial.println(properties.retain);
-            Serial.print("  len: ");
-            Serial.println(len);
-            Serial.print("  index: ");
-            Serial.println(index);
-            Serial.print("  total: ");
-            Serial.println(total);
+            dbg.println("Publish received.");
+            dbg.print("  topic: ");
+            dbg.println(topic);
+            dbg.print("  qos: ");
+            dbg.println(properties.qos);
+            dbg.print("  dup: ");
+            dbg.println(properties.dup);
+            dbg.print("  retain: ");
+            dbg.println(properties.retain);
+            dbg.print("  len: ");
+            dbg.println(len);
+            dbg.print("  index: ");
+            dbg.println(index);
+            dbg.print("  total: ");
+            dbg.println(total);
             if (strcmp(topic, this->mqttListenTopic) != 0) {
-                Serial.print("got message on unknown topic ");
-                Serial.println(topic);
+                dbg.print("got message on unknown topic ");
+                dbg.println(topic);
                 return;
             } 
             if (len < 1) {
-                Serial.println("got an empty message");
+                dbg.println("got an empty message");
                 return;
             }
             switch ((uint8_t)payload[0]) {
                 case CMD_SET_CONFIG:
                     if (sizeof(GrowbotConfig) < len - 1) {
-                        Serial.print("Got set config message, but payload len of ");
-                        Serial.print(len);
-                        Serial.print(" is not the size of GrowbotConfig ");
-                        Serial.println(sizeof(GrowbotConfig));
+                        dbg.print("Got set config message, but payload len of ");
+                        dbg.print(len);
+                        dbg.print(" is not the size of GrowbotConfig ");
+                        dbg.println(sizeof(GrowbotConfig));
                         break;
                     }
-                    Serial.println("got new config of the right size, doing callbacks");
+                    dbg.println("got new config of the right size, doing callbacks");
                     for (auto callback : this->onNewConfigCallbacks) callback(*(GrowbotConfig*)(((uint8_t*)payload)+1));                    
                 break;
                 case CMD_SET_OPERATING_MODE:
                     if (len < 2) {
-                        Serial.print("Got set operating mode message expecting 2 bytes total, but got ");
-                        Serial.print(len);
+                        dbg.print("Got set operating mode message expecting 2 bytes total, but got ");
+                        dbg.print(len);
                         break;
                     }
-                    Serial.print("got new operating mode ");
-                    Serial.print((uint8_t)payload[1]);
-                    Serial.println(", doing callbacks");
+                    dbg.print("got new operating mode ");
+                    dbg.print((uint8_t)payload[1]);
+                    dbg.println(", doing callbacks");
                     for (auto callback : this->onModeChangeCallbacks) callback((uint8_t)payload[1]);
                 break;
                 default:
-                    Serial.print("Unknown command received ");
-                    Serial.println((uint8_t)payload[0]);
+                    dbg.print("Unknown command received ");
+                    dbg.println((uint8_t)payload[0]);
                     break;
             }           
         }
         void onMqttSubscribe(uint16_t packetId, uint8_t qos) {
-            Serial.println("Subscribe acknowledged.");
-            Serial.print("  packetId: ");
-            Serial.println(packetId);
-            Serial.print("  qos: ");
-            Serial.println(qos);
+            dbg.println("Subscribe acknowledged.");
+            dbg.print("  packetId: ");
+            dbg.println(packetId);
+            dbg.print("  qos: ");
+            dbg.println(qos);
         }
     public:
         MQTTDataConnection(const char* host, const short port, const char* publishTopic, const char* listenTopic) {

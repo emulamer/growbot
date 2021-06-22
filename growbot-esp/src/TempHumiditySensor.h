@@ -4,10 +4,12 @@
 #include "GrowbotData.h"
 #include <Adafruit_BME280.h>
 #include <Wire.h>
-//needed? #include <Adafruit_Sensor.h>
+#include "DebugUtils.h"
+
 #ifndef TEMP_HUM_SENSOR_H
 #define TEMP_HUM_SENSOR_H
 #define SEALEVELPRESSURE_HPA (1013.25)
+#define MAX_READ_FAIL_SKIP 4
 
 class TempHumiditySensor {
     public:
@@ -22,6 +24,8 @@ class BME280Sensor : public TempHumiditySensor {
         I2CMultiplexer* plexer;
         byte busNum;
         bool isMultiplexer;
+        int tempReadFailCount = 0;
+        int humidReadFailCount = 0;
     public:
         BME280Sensor(I2CMultiplexer* multiplexer, byte multiplexer_bus) {
             this->isMultiplexer = true;
@@ -37,7 +41,7 @@ class BME280Sensor : public TempHumiditySensor {
             }
             this->isOk = (this->bme.begin(0x76, &Wire) != 0);
             if (!this->isOk) {
-                Serial.println("bme not ok");
+                dbg.println("bme not ok");
             }
         }
         bool read(TempHumidity &output) {
@@ -48,13 +52,52 @@ class BME280Sensor : public TempHumiditySensor {
                 this->isOk = (this->bme.begin() != 0);
             }
             if (this->isOk) {
-                output.humidity = bme.readHumidity();
-                output.temperatureC = bme.readTemperature();
-                return true;
+                float oldHum = output.humidity;
+                float oldTemp = output.temperatureC;
+                for (byte i = 1; i <= 3; i++) {
+                    output.humidity = bme.readHumidity();
+                    if (!isnan(output.humidity) && output.humidity > 0 && output.humidity < 100) {
+                        break;
+                    }
+                    dbg.printf("Invalid BME280 humidity reading of %f, retry #%d", output.humidity, i);
+                    delay(100);
+                }
+                if (!isnan(output.humidity) && output.humidity > 0 && output.humidity < 100) {
+                    humidReadFailCount = 0;
+                } else {
+                    humidReadFailCount++;
+                    if (humidReadFailCount < MAX_READ_FAIL_SKIP) {
+                        output.humidity = oldHum;
+                    } else {
+                        dbg.println("BME280 humidity sensor has failed too many times to ignore!");
+                        output.humidity = NAN;
+                    }
+                }
+                
+                for (byte i = 1; i <= 3; i++) {
+                    output.temperatureC = bme.readTemperature();
+                    if (!isnan(output.temperatureC) && output.temperatureC > 0 && output.temperatureC < 70) {
+                        break;
+                    }
+                    dbg.printf("Invalid BME280 temp reading of %f, retry #%d", output.temperatureC, i);
+                    delay(100);
+                }
+                if (!isnan(output.temperatureC) && output.temperatureC > 0 && output.temperatureC < 70) {
+                    tempReadFailCount = 0;
+                } else {
+                    tempReadFailCount++;
+                    if (tempReadFailCount < MAX_READ_FAIL_SKIP) {
+                        output.temperatureC = oldTemp;
+                    } else {
+                        dbg.println("BME280 temp sensor has failed too many times to ignore!");
+                        output.temperatureC = NAN;
+                    }
+                }
+            } else {
+                output.temperatureC = NAN;
+                output.humidity = NAN;
             }
-            output.humidity = NAN;
-            output.temperatureC = NAN;
-            return false;
+            return (!isnan(output.humidity) && !isnan(output.temperatureC));
         }
 };
 
@@ -65,7 +108,7 @@ class SHTC3Sensor : public TempHumiditySensor {
         I2CMultiplexer* plexer;
         byte busNum;
         bool isMultiplexer;
-
+        int readFailCount = 0;
     public:
         SHTC3Sensor(I2CMultiplexer* multiplexer, byte multiplexer_bus) {
             this->isMultiplexer = true;
@@ -84,32 +127,60 @@ class SHTC3Sensor : public TempHumiditySensor {
             if (this->isOk) {
                 this->isOk = (mySHTC3.setMode(SHTC3_CMD_CSE_TF_NPM) == SHTC3_Status_Nominal);
             } else {
-                Serial.println("passIDcrc not ok");
+                dbg.println("passIDcrc not ok");
             }
             if (this->isOk) {
                 this->isOk = (mySHTC3.wake(true) == SHTC3_Status_Nominal);
             } else {
-                Serial.println("wake not ok");
+                dbg.println("wake not ok");
             }
         }
         bool read(TempHumidity &output) {
             if (this->isOk) {
+                float oldHum = output.humidity;
+                float oldTemp = output.temperatureC;
                 if (this->isMultiplexer) {
                     this->plexer->setBus(this->busNum);
                 }
-               this->mySHTC3.update();    
-               if(this->mySHTC3.lastStatus == SHTC3_Status_Nominal)
-               {
-                    output.humidity = this->mySHTC3.toPercent();
-                    output.temperatureC = this->mySHTC3.toDegC();
-                    return true;
-               } 
-            }  else {
-                Serial.println("not ok when read");
+                byte retries = 1;
+                while (retries <= 3) {
+                    this->mySHTC3.update();    
+                    if(this->mySHTC3.lastStatus == SHTC3_Status_Nominal)
+                    {
+                        output.humidity = this->mySHTC3.toPercent();
+                        output.temperatureC = this->mySHTC3.toDegC();
+                        if (!isnan(output.humidity) && !isnan(output.temperatureC) && output.humidity > 0 && output.humidity < 100
+                                && output.temperatureC > 0 && output.temperatureC < 70) 
+                        {
+                            break;
+                        }
+                        dbg.printf("SHT sensor failed read with temp %f hum %f, retry %d", output.temperatureC, output.humidity, retries);
+                    } else {
+                        dbg.printf("SHT sensor failed read with status %d, retry %d", static_cast<int>(this->mySHTC3.lastStatus), retries);
+                    }
+                    retries++;
+                    delay(100);
+                }
+                if (!isnan(output.humidity) && !isnan(output.temperatureC) && output.humidity > 0 && output.humidity < 100
+                                && output.temperatureC > 0 && output.temperatureC < 70)
+                {
+                    readFailCount = 0;
+                } else {
+                    readFailCount++;
+                    if (readFailCount < MAX_READ_FAIL_SKIP) {
+                        output.temperatureC = oldTemp;
+                        output.humidity = oldHum;
+                    } else {
+                        dbg.println("SHT sensor has failed too many times to ignore!");
+                        output.temperatureC = NAN;
+                        output.humidity = NAN;
+                    }
+                }                
+            } else {
+                output.humidity = NAN;
+                output.temperatureC = NAN;
             }
-            output.humidity = NAN;
-            output.temperatureC = NAN;
-            return false;
+            return (!isnan(output.humidity) && !isnan(output.temperatureC));
         }
 };
 
