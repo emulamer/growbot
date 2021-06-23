@@ -4,13 +4,15 @@
 #include "GrowbotData.h"
 #include <Max44009.h>
 #include "DebugUtils.h"
+#include "DeferredSensorReader.h"
+
 #ifndef LUXSENSOR_H
 #define LUXSENSOR_H
 
 uint8_t CDR = 0;
 uint8_t TIM = 0;
 
-class LuxSensor {
+class LuxSensor : public DeferredSensorReader {
     public:
         virtual void init();
         virtual float readLux();
@@ -23,7 +25,11 @@ class Max44009Sensor : public LuxSensor {
         I2CMultiplexer* plexer;
         byte busNum;
         bool isMultiplexer;
-
+        void doPlex() {
+            if (this->isMultiplexer) {
+                this->plexer->setBus(this->busNum);
+            }
+        }
     public: 
         Max44009Sensor(I2CMultiplexer* multiplexer, byte multiplexer_bus) {
             this->isMultiplexer = true;
@@ -55,9 +61,7 @@ class Max44009Sensor : public LuxSensor {
             if (!this->isOk) {
                 return NAN;
             }
-            if (this->isMultiplexer) {
-                this->plexer->setBus(this->busNum);
-            }
+            this->doPlex();
             float lux = myLux.getLux();
             dbg.printf("lux sensor returned value %f\r\n", lux);
             if (lux < 0) {
@@ -65,6 +69,28 @@ class Max44009Sensor : public LuxSensor {
                 return NAN;
             }
             return lux;
+        }
+        DeferredReading startRead() {
+            DeferredReading reading;
+            reading.sourceSensor = this;
+            reading.readingCount = 1;
+            reading.isComplete = true;
+            reading.deferUntil = 0;
+            this->doPlex();
+            float lux = myLux.getLux();
+            if (isnan(lux) || lux < 0) {
+                dbg.printf("lux sensor read error, code: %f\r\n", lux);
+                reading.values[0] = NAN;
+                reading.isSuccessful = false;
+            } else {
+                reading.values[0] = lux;
+                reading.isSuccessful = true;
+            }
+            return reading;            
+        }
+
+        void finishRead(DeferredReading &reading) {
+            //it's instant, so nothing happens for finish
         }
 };
 

@@ -8,11 +8,9 @@ class PhSensor : public EzoSensor {
         }
         PhSensor() : EzoSensor::EzoSensor("PH", 0x63) {
         }
+      
         bool read(WaterData &output) {
-            return this->read(25.0, output);
-        }        
-        bool read(float waterTemperatureC, WaterData &output) {
-            float reading = this->readSensor(waterTemperatureC);
+            float reading = this->readSensor();
             output.ph = reading;
             return (reading != NAN);
         }   

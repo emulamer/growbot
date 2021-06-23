@@ -17,6 +17,14 @@
 #include "LuxSensor.h"
 #include "DebugUtils.h"
 #include <ArduinoOTA.h>
+#include "WaterTempSensor.h"
+#include <Wire.h>
+#include <driver/periph_ctrl.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include "soc/rtc_wdt.h"
+#include "ReadingNormalizer.h"
+
 
 #define EC_CALIBRATION_LOW 12880
 #define EC_CALIBRATION_HIGH 80000
@@ -41,16 +49,23 @@ GrowbotConfig config;
 GrowbotData data;
 GrowbotState state;
 
+
+OneWire oneWire(ONEWIRE_PIN);
+DallasTemperature waterTempSensor(&oneWire);
+
 // onewire water temp sensor addresses
-DeviceAddress wtControlBucketAddress = WT_CONTROL_BUCKET_ADDRESS;
+DallasWaterTempSensor wtControlBucket = DallasWaterTempSensor(&waterTempSensor, (DeviceAddress)WT_CONTROL_BUCKET_ADDRESS);
 
 #if NUM_BUCKETS > 0
-DeviceAddress wtBucketAddresses[NUM_BUCKETS] = { WT_BUCKET_ADDRESSES };
+DallasWaterTempSensor wtBucketAddresses[NUM_BUCKETS] = { 
+          new DallasWaterTempSensor(&waterTempSensor, (DeviceAddress)WT_BUCKET_ADDRESSES[0]),
+          new DallasWaterTempSensor(&waterTempSensor, (DeviceAddress)WT_BUCKET_ADDRESSES[1]),
+          new DallasWaterTempSensor(&waterTempSensor, (DeviceAddress)WT_BUCKET_ADDRESSES[2]),
+          new DallasWaterTempSensor(&waterTempSensor, (DeviceAddress)WT_BUCKET_ADDRESSES[3]) };
 #endif
 
 
-OneWire oneWire(ONEWIRE_PIN);
-DallasTemperature waterTempSensors(&oneWire);
+
 
 //i2c stuff
 I2CMultiplexer i2cMultiplexer(I2C_MULTIPLEXER_ADDRESS);
@@ -311,9 +326,8 @@ void onModeChange(byte mode) {
 }
 
 void initSensors() {
-  //start up I2C stuff
-  Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN, I2C_FREQ);
 
+  
   #if NUM_BUCKETS > 0
     for (byte i = 0; i < NUM_BUCKETS; i++) {
       wlBuckets[i] = new WaterLevel(&i2cMultiplexer, WL_BUCKET_MULTIPLEXER_PORTS[i]);
@@ -324,11 +338,12 @@ void initSensors() {
   updateFromConfig();
 
   //setup water temperature
-  waterTempSensors.begin();
-  waterTempSensors.setResolution(wtControlBucketAddress, 9);
+  waterTempSensor.begin();
+  wtControlBucket.init();
+
   #if NUM_BUCKETS > 0
   for (byte i = 0; i < NUM_BUCKETS; i++) {
-    waterTempSensors.setResolution(wtBucketAddresses[i], 9);
+    waterTempSensors[i].init();
   }
   #endif
 
@@ -381,23 +396,17 @@ void initSensors() {
 }
 
 void readWaterTempSensors() {
-  for (byte i = 0; i < 4; i++) {
-    data.controlBucket.temperatureC = waterTempSensors.getTempC(wtControlBucketAddress);
-    if (data.controlBucket.temperatureC > 0 && data.controlBucket.temperatureC < 70) {
-      break;
-    }
-    dbg.printf("control bucket temp sensor, retrying #%d\n", i);
-  }
-  if (!(data.controlBucket.temperatureC > 0 && data.controlBucket.temperatureC < 70)) {
+  data.controlBucket.temperatureC = wtControlBucket.read();
+  
+  if (isnan(data.controlBucket.temperatureC) || !(data.controlBucket.temperatureC > 0 && data.controlBucket.temperatureC < 70)) {
     dbg.println("control bucket temp sensor failed!");
-    data.controlBucket.temperatureC = NAN;
   }
   
   #if NUM_BUCKETS > 0
   for (byte i = 0; i < NUM_BUCKETS; i++) {
-    data.buckets[i].temperatureC = waterTempSensors.getTempC(wtBucketAddresses[i]);
-    if (data.buckets[i].temperatureC == -127) {
-      data.buckets[i].temperatureC = NAN;
+    data.buckets[i].temperatureC = waterTempSensors[i].read();
+    if (isnan(data.data.buckets[i].temperatureC) || !(data.data.buckets[i].temperatureC > 0 && data.data.buckets[i].temperatureC < 70)) {
+      dbg.printf("Bucket %d temp sensor failed!", i);
     }
   }
   #endif
@@ -477,12 +486,14 @@ void readWaterQualitySensors(bool ph, bool tds) {
   if (!isnan(data.controlBucket.temperatureC)) {
     dbg.println("Using control bucket temp for compensation");
     if (tds) {
-      if (!tdsSensor.read(data.controlBucket.temperatureC, data.waterData)) {
+      tdsSensor.setWaterTempCompensation(data.controlBucket.temperatureC);
+      if (!tdsSensor.read(data.waterData)) {
         dbg.println("conductivity sensor failed to read!");
       }
     }
     if (ph) {
-      if (!phSensor.read(data.controlBucket.temperatureC, data.waterData)) {
+      phSensor.setWaterTempCompensation(data.controlBucket.temperatureC);
+      if (!phSensor.read(data.waterData)) {
         dbg.println("ph sensor failed to read!");
       }
     }
@@ -503,6 +514,18 @@ void readWaterQualitySensors(bool ph, bool tds) {
   }
 }
 
+
+ 
+void reset_system()
+{
+    rtc_wdt_protect_off();      //Disable RTC WDT write protection
+    //Set stage 0 to trigger a system reset after 1000ms
+    rtc_wdt_set_stage(RTC_WDT_STAGE0, RTC_WDT_STAGE_ACTION_RESET_SYSTEM);
+    rtc_wdt_set_time(RTC_WDT_STAGE0, 100);
+    rtc_wdt_enable();           //Start the RTC WDT timer
+    rtc_wdt_protect_on();       //Enable RTC WDT write protection
+}
+
 void readAllSensors() {
   dbg.print("Reading all sensors...");
   readTempHumiditySensors();
@@ -517,7 +540,17 @@ void setup() {
   EEPROM.begin(512);
   Serial.begin(115200);
   dbg.println("Growbot v.01 starting up...");
+  digitalWrite(I2C_SDA_PIN, 0);
+  digitalWrite(I2C_SCL_PIN, 0);
+  delay(100);
+  digitalWrite(I2C_SDA_PIN, 1);
+  digitalWrite(I2C_SCL_PIN, 0);
+  delay(100);
+  periph_module_disable(PERIPH_I2C0_MODULE);
+  periph_module_enable(PERIPH_I2C0_MODULE);
+  Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN, I2C_FREQ);
   ArduinoOTA.setPort(3232);
+  ArduinoOTA.setRebootOnSuccess(false);
   ArduinoOTA
     .onStart([]() {
       String type;
@@ -530,7 +563,8 @@ void setup() {
       dbg.println("Start updating " + type);
     })
     .onEnd([]() {
-      dbg.println("\nEnd");
+      dbg.println("Update End, setting watchdog");
+      reset_system();
     })
     .onProgress([](unsigned int progress, unsigned int total) {
       dbg.printf("Progress: %u%%\r", (progress / (total / 100)));
@@ -576,12 +610,101 @@ bool tickNow() {
 }
 
 
-void loop() {
+bool millisElapsed(unsigned long ms) {
+    if (ms <= millis()) {
+      return true;
+    }
+    //todo: need to make sure this handles the 52 day wrap here or things will break
+    if (abs(ms - millis()) > 10000000) {
+      return true;
+    }
+    return false;
+}
+
+//things that really have to be called all the time
+void doImportantTicks() {
   ArduinoOTA.handle();
+}
+//ReadingNormalizer rnInnerExhaust;
+
+void doCrazyStuff() {
+  delay(5000);
+  dbg.println("starting read");
+  std::vector<DeferredReading*> readings;
+  DeferredReading rthInnerExhaust = thInnerExhaust.startRead();
+  DeferredReading rthInnerIntake = thInnerIntake.startRead();
+  DeferredReading rthOuterIntake = thOuterIntake.startRead();
+  DeferredReading rthOuterExhaust = thOuterExhaust.startRead();
+  DeferredReading rthInnerAmbient1 = thInnerAmbient1.startRead();
+  DeferredReading rthInnerAmbient2 = thInnerAmbient2.startRead();
+  DeferredReading rluxAmbient1 = luxAmbient1.startRead();
+  DeferredReading rluxAmbient2 = luxAmbient2.startRead();
+  DeferredReading rluxAmbient3 = luxAmbient3.startRead();
+  DeferredReading rluxAmbient4 = luxAmbient4.startRead();
+  DeferredReading rwtControlBucket = wtControlBucket.startRead();
+  DeferredReading rwlControlBucket = wlControlBucket.startRead();
+  DeferredReading rphSensor = phSensor.startRead();
+  DeferredReading rtdsSensor = tdsSensor.startRead();
+  
+  readings.push_back(&rthInnerExhaust );
+  readings.push_back(&rthInnerIntake);
+  readings.push_back(&rthOuterIntake);
+  readings.push_back(&rthOuterExhaust );
+  readings.push_back(&rthInnerAmbient1);
+  readings.push_back(&rthInnerAmbient2);
+  readings.push_back(&rluxAmbient1);
+  readings.push_back(&rluxAmbient2);
+  readings.push_back(&rluxAmbient3);
+  readings.push_back(&rluxAmbient4);
+  readings.push_back(&rwtControlBucket);
+  readings.push_back(&rwlControlBucket);
+  readings.push_back(&rphSensor);
+  readings.push_back(&rtdsSensor);
+  
+  unsigned long start = millis();
+  dbg.println("starting to wait until they're done");
+
+  bool outstanding = false;
+  
+  do {
+    outstanding = false;
+    int pending = 0;
+  int outCount = 0;
+    for (auto reading : readings) {
+      if (!reading->isComplete) {
+        outstanding = true;
+        outCount++;
+        if (millisElapsed(reading->deferUntil)) {
+          reading->sourceSensor->finishRead(*reading);
+          reading->isComplete = true;
+        } else {
+          pending++;
+        }
+      }
+    }
+   // dbg.printf("%d outstanding, %d not elapsed yet\n", outCount, pending);
+    delay(100);
+    doImportantTicks();
+  } while (outstanding);
+  int ctr = 0;
+  for (auto reading : readings) {
+    if (reading->isSuccessful) {
+      dbg.printf("ctr %d is success\n", ctr);
+    } else {
+      dbg.printf("ctr %d is FAIL\n", ctr);
+    }
+    ctr++;
+  }
+  unsigned long end = millis();
+  dbg.printf("finished them all in %lu ms", (end - start));
+}
+void loop() {
+  doImportantTicks();
 
   if (operating_mode == GROWBOT_MODE_NORMAL) {
     if (tickNow()) {
-      readAllSensors();
+      //readAllSensors();
+      doCrazyStuff();
       sendState();
       dbg.printf("Waiting to sample again for %d\n", config.samplingIntervalMS);
     }

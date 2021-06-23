@@ -11,10 +11,7 @@ class ConductivitySensor : public EzoSensor {
         ConductivitySensor() : EzoSensor::EzoSensor("EC", 0x64){
         }
         bool read(WaterData &output) {
-            return this->read(25.0, output);
-        } 
-        bool read(float waterTemperatureC, WaterData &output) {
-            float reading = this->readSensor(waterTemperatureC);
+            float reading = this->readSensor();
             output.tds = reading;
             return (reading != NAN);
         }   

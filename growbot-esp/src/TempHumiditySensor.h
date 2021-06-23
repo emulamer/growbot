@@ -11,7 +11,7 @@
 #define SEALEVELPRESSURE_HPA (1013.25)
 #define MAX_READ_FAIL_SKIP 4
 
-class TempHumiditySensor {
+class TempHumiditySensor : public DeferredSensorReader {
     public:
         virtual void init() = 0;
         virtual bool read(TempHumidity &output) = 0;
@@ -26,6 +26,11 @@ class BME280Sensor : public TempHumiditySensor {
         bool isMultiplexer;
         int tempReadFailCount = 0;
         int humidReadFailCount = 0;
+        void doPlex() {
+            if (this->isMultiplexer) {
+                this->plexer->setBus(this->busNum);
+            }
+        } 
     public:
         BME280Sensor(I2CMultiplexer* multiplexer, byte multiplexer_bus) {
             this->isMultiplexer = true;
@@ -36,22 +41,18 @@ class BME280Sensor : public TempHumiditySensor {
             this->isMultiplexer = false;
         }
         void init() {
-            if (this->isMultiplexer) {
-                this->plexer->setBus(this->busNum);
-            }
+            doPlex();
             this->isOk = (this->bme.begin(0x76, &Wire) != 0);
             if (!this->isOk) {
                 dbg.println("bme not ok");
             }
         }
         bool read(TempHumidity &output) {
-            if (this->isMultiplexer) {
-                this->plexer->setBus(this->busNum);
-            }
             if (!this->isOk) {
-                this->isOk = (this->bme.begin() != 0);
+                this->init();
             }
             if (this->isOk) {
+                doPlex();
                 float oldHum = output.humidity;
                 float oldTemp = output.temperatureC;
                 for (byte i = 1; i <= 3; i++) {
@@ -59,7 +60,7 @@ class BME280Sensor : public TempHumiditySensor {
                     if (!isnan(output.humidity) && output.humidity > 0 && output.humidity < 100) {
                         break;
                     }
-                    dbg.printf("Invalid BME280 humidity reading of %f, retry #%d", output.humidity, i);
+                    dbg.printf("Invalid BME280 humidity reading of %f, retry #%d\n", output.humidity, i);
                     delay(100);
                 }
                 if (!isnan(output.humidity) && output.humidity > 0 && output.humidity < 100) {
@@ -79,7 +80,7 @@ class BME280Sensor : public TempHumiditySensor {
                     if (!isnan(output.temperatureC) && output.temperatureC > 0 && output.temperatureC < 70) {
                         break;
                     }
-                    dbg.printf("Invalid BME280 temp reading of %f, retry #%d", output.temperatureC, i);
+                    dbg.printf("Invalid BME280 temp reading of %f, retry #%d\n", output.temperatureC, i);
                     delay(100);
                 }
                 if (!isnan(output.temperatureC) && output.temperatureC > 0 && output.temperatureC < 70) {
@@ -99,6 +100,38 @@ class BME280Sensor : public TempHumiditySensor {
             }
             return (!isnan(output.humidity) && !isnan(output.temperatureC));
         }
+        DeferredReading startRead() {
+            
+            
+            if (!this->isOk) {
+                this->init();
+            }
+            
+            DeferredReading reading;
+            reading.sourceSensor = this;
+            reading.deferUntil = 0;
+            if (this->isOk) {
+                this->doPlex();
+                reading.values[0] = bme.readTemperature();
+                reading.values[1] = bme.readHumidity();
+                if (isnan(reading.values[0]) || isnan(reading.values[1]) || reading.values[0] == 0 || reading.values[1] == 0) {
+                    reading.isSuccessful = false;
+                    reading.values[0] = NAN;
+                    reading.values[1] = NAN;
+                } else {
+                    reading.isSuccessful = true;
+                }                
+            } else {
+                reading.isSuccessful = false;
+                reading.values[0] = NAN;
+                reading.values[1] = NAN;
+            }
+            reading.isComplete = true;
+            return reading;            
+        }
+        void finishRead(DeferredReading &reading) {
+            //doesn't do anything since it isn't really deferred
+        }
 };
 
 class SHTC3Sensor : public TempHumiditySensor {
@@ -109,6 +142,11 @@ class SHTC3Sensor : public TempHumiditySensor {
         byte busNum;
         bool isMultiplexer;
         int readFailCount = 0;
+        void doPlex() {
+            if (this->isMultiplexer) {
+                this->plexer->setBus(this->busNum);
+            }
+        }
     public:
         SHTC3Sensor(I2CMultiplexer* multiplexer, byte multiplexer_bus) {
             this->isMultiplexer = true;
@@ -154,9 +192,9 @@ class SHTC3Sensor : public TempHumiditySensor {
                         {
                             break;
                         }
-                        dbg.printf("SHT sensor failed read with temp %f hum %f, retry %d", output.temperatureC, output.humidity, retries);
+                        dbg.printf("SHT sensor failed read with temp %f hum %f, retry %d\n", output.temperatureC, output.humidity, retries);
                     } else {
-                        dbg.printf("SHT sensor failed read with status %d, retry %d", static_cast<int>(this->mySHTC3.lastStatus), retries);
+                        dbg.printf("SHT sensor failed read with status %d, retry %d\n", static_cast<int>(this->mySHTC3.lastStatus), retries);
                     }
                     retries++;
                     delay(100);
@@ -181,6 +219,29 @@ class SHTC3Sensor : public TempHumiditySensor {
                 output.temperatureC = NAN;
             }
             return (!isnan(output.humidity) && !isnan(output.temperatureC));
+        }
+        DeferredReading startRead() {
+            DeferredReading reading;
+            reading.sourceSensor = this;
+            reading.deferUntil = 0;
+            this->doPlex();
+            this->mySHTC3.update();    
+            if(this->mySHTC3.lastStatus == SHTC3_Status_Nominal)
+            {
+                reading.values[0] = this->mySHTC3.toDegC();
+                reading.values[1] = this->mySHTC3.toPercent();
+                reading.isSuccessful = true;
+            } else {
+                dbg.printf("SHT sensor failed read with status %d\n", static_cast<int>(this->mySHTC3.lastStatus));
+                reading.values[0] = NAN;
+                reading.values[1] = NAN;
+                reading.isSuccessful = false;
+            }
+            reading.isComplete = true;
+            return reading;            
+        }
+        void finishRead(DeferredReading &reading) {
+            //doesn't do anything since it isn't really deferred
         }
 };
 
