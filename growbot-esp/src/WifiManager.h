@@ -23,8 +23,7 @@ class WifiManager {
             dbg.println("Wifi connected, waiting for IP...");
         }
         void onWifiGotIP(WiFiEvent_t event) {
-            dbg.print("Wifi got IP ");
-            dbg.println(WiFi.localIP().toString());  
+            dbg.printf("Wifi got IP %s\n",WiFi.localIP().toString().c_str());
             ArduinoOTA.begin();
             dbg.println("Started up OTA update listener");
             dbg.wifiIsReady();

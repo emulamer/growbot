@@ -41,11 +41,7 @@ class MQTTDataConnection : public DataConnection {
         void connectMqtt() {
             dbg.println("connectMqtt..");
             if (!this->mqttClient.connected() && WiFi.isConnected()) {
-                dbg.print("Connecting MQTT to");
-                dbg.print(this->mqttHost);
-                dbg.print(":");
-                dbg.print(this->mqttPort);
-                dbg.println("...");
+                dbg.printf("Connecting MQTT to %s:%d...\n", this->mqttHost, this->mqttPort);
                 this->mqttClient.connect();
             } else {
                 if (this->mqttClient.connected()) {
@@ -60,8 +56,7 @@ class MQTTDataConnection : public DataConnection {
             this->connectMqtt();
         }
         void onMqttConnect(bool sessionPresent) {
-            dbg.print("MQTT connected, subscribing to ");
-            dbg.println(this->mqttListenTopic);
+            dbg.printf("MQTT connected, subscribing to %s\n", this->mqttListenTopic);
             this->mqttClient.subscribe(this->mqttListenTopic, 1);
         }
         void onMqttDisconnect(AsyncMqttClientDisconnectReason reason) {
@@ -72,21 +67,7 @@ class MQTTDataConnection : public DataConnection {
             }
         }
         void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total) {
-            dbg.println("Publish received.");
-            dbg.print("  topic: ");
-            dbg.println(topic);
-            dbg.print("  qos: ");
-            dbg.println(properties.qos);
-            dbg.print("  dup: ");
-            dbg.println(properties.dup);
-            dbg.print("  retain: ");
-            dbg.println(properties.retain);
-            dbg.print("  len: ");
-            dbg.println(len);
-            dbg.print("  index: ");
-            dbg.println(index);
-            dbg.print("  total: ");
-            dbg.println(total);
+            
             if (strcmp(topic, this->mqttListenTopic) != 0) {
                 dbg.print("got message on unknown topic ");
                 dbg.println(topic);
@@ -99,10 +80,7 @@ class MQTTDataConnection : public DataConnection {
             switch ((uint8_t)payload[0]) {
                 case CMD_SET_CONFIG:
                     if (sizeof(GrowbotConfig) < len - 1) {
-                        dbg.print("Got set config message, but payload len of ");
-                        dbg.print(len);
-                        dbg.print(" is not the size of GrowbotConfig ");
-                        dbg.println(sizeof(GrowbotConfig));
+                        dbg.printf("Got set config message, but payload len of %d is not the size of GrowboxConfig %d\n", len, sizeof(GrowbotConfig));
                         break;
                     }
                     dbg.println("got new config of the right size, doing callbacks");
@@ -120,17 +98,12 @@ class MQTTDataConnection : public DataConnection {
                     for (auto callback : this->onModeChangeCallbacks) callback((uint8_t)payload[1]);
                 break;
                 default:
-                    dbg.print("Unknown command received ");
-                    dbg.println((uint8_t)payload[0]);
+                    dbg.printf("Unknown command received %d\n", (uint8_t)payload[0]);
                     break;
             }           
         }
         void onMqttSubscribe(uint16_t packetId, uint8_t qos) {
-            dbg.println("Subscribe acknowledged.");
-            dbg.print("  packetId: ");
-            dbg.println(packetId);
-            dbg.print("  qos: ");
-            dbg.println(qos);
+            dbg.printf("MQTT subscribe acknowledged\n");
         }
     public:
         MQTTDataConnection(const char* host, const short port, const char* publishTopic, const char* listenTopic) {

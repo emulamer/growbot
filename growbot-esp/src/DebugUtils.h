@@ -5,6 +5,7 @@
 #include <Print.h>
 #include <WiFiUdp.h>
 #include <Wifi.h>
+#include "perhip/I2CMultiplexer.h"
 #ifndef DEBUGUTILS_H
 #define DEBUGUTILS_H
 const char * udpAddress = "192.168.1.219";
@@ -50,6 +51,15 @@ class UdpPrint : public Print {
         size_t write(uint8_t) {
             return 1;
         }
+        // size_t println(const char* msg) {
+        //   int len = strlen(msg);
+        //   char *bfr = (char *)malloc(len +1);
+        //   strcpy((char *)msg, bfr);
+        //   bfr[len] = '\n';
+        //   this->write((const uint8_t*)bfr, len + 1);
+        //   free((void *)bfr);
+        //   return len + 1;
+        // }
 
 };
 UdpPrint dbg;
@@ -75,11 +85,11 @@ void debug_find_onewire_sensors(OneWire oneWire) {
   }
 } 
 
-void debug_scan_i2c() {
+void debug_scan_i2c(TwoWire &wire, byte portnum = 0, byte busnum = 0) {
   byte error, address; //variable for error and I2C address
   int nDevices;
 
-  dbg.println("Scanning...");
+  dbg.printf("Scanning port %d bus %d...\n", portnum, busnum);
 
   nDevices = 0;
   for (address = 1; address < 127; address++ )
@@ -87,29 +97,40 @@ void debug_scan_i2c() {
     // The i2c_scanner uses the return value of
     // the Write.endTransmisstion to see if
     // a device did acknowledge to the address.
-    Wire.beginTransmission(address);
-    error = Wire.endTransmission();
-
+    wire.beginTransmission(address);
+    error = wire.endTransmission();
+    byte printaddr;
+    if (address < 16) {
+      printaddr =  0;
+     } else {
+       printaddr = address;
+     }
     if (error == 0)
     {
-      dbg.print("I2C device found at address 0x");
-      if (address < 16)
-        dbg.print("0");
-      dbg.print(address, HEX);
-      dbg.println("  !");
+      
+      dbg.printf("I2C device found port %d bus %d at address %x\n", portnum, busnum, printaddr);
+      // if (address < 16)
+      //   dbg.print("0");
+      // dbg.print(address, HEX);
+      // dbg.println("  !");
       nDevices++;
     }
     else if (error == 4)
     {
-      dbg.print("Unknown error at address 0x");
-      if (address < 16)
-        dbg.print("0");
-      dbg.println(address, HEX);
+      dbg.printf("Unknown error port %d bus %d at address %x\n", portnum, busnum, printaddr);
     }
   }
   if (nDevices == 0)
-    dbg.println("No I2C devices found\n");
+    dbg.printf("No I2C devices found port %d bus %d\n", portnum, busnum);
   else
-    dbg.println("done\n");
+    dbg.printf("done\n");
+}
+
+void debug_find_i2c(byte port, I2CMultiplexer &plexer) {
+  for (int i = 0; i < 8; i++) {
+    dbg.printf("Selecting bus %d...\n", i);
+    plexer.setBus(i);
+    debug_scan_i2c((port==0)?Wire:Wire1,port, i);
+  }
 }
 #endif

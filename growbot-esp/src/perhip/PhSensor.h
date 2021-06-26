@@ -1,12 +1,12 @@
 #include "EzoSensor.h"
-#include "GrowbotData.h"
+#include "../GrowbotData.h"
 #ifndef PHSENSOR_H
 #define PHSENSOR_H
 class PhSensor : public EzoSensor {
     public:
-        PhSensor(I2CMultiplexer* multiplexer, byte multiplexer_bus) : EzoSensor::EzoSensor(multiplexer, multiplexer_bus, "PH", 0x63) {
+        PhSensor(TwoWire* wire, I2CMultiplexer* multiplexer, byte multiplexer_bus, byte enablePin) : EzoSensor::EzoSensor(wire, multiplexer, multiplexer_bus, "PH", 0x63, enablePin) {
         }
-        PhSensor() : EzoSensor::EzoSensor("PH", 0x63) {
+        PhSensor(TwoWire* wire, byte enablePin) : EzoSensor::EzoSensor(wire, "PH", 0x63, enablePin) {
         }
       
         bool read(WaterData &output) {
@@ -20,9 +20,9 @@ class PhSensor : public EzoSensor {
             }
             return this->calibrateSensor(point, reference);
         } 
-        // void init() {
-        //     this->EzoSensor::init();
-        // }
+        void init() {
+            this->EzoSensor::init();
+        }
 };
 
 #endif

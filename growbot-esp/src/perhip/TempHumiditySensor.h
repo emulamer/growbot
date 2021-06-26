@@ -1,17 +1,17 @@
 #include <Arduino.h>
 #include <SparkFun_SHTC3.h>
 #include "I2CMultiplexer.h"
-#include "GrowbotData.h"
+#include "../GrowbotData.h"
 #include <Adafruit_BME280.h>
 #include <Wire.h>
-#include "DebugUtils.h"
+#include "../DebugUtils.h"
 
 #ifndef TEMP_HUM_SENSOR_H
 #define TEMP_HUM_SENSOR_H
 #define SEALEVELPRESSURE_HPA (1013.25)
 #define MAX_READ_FAIL_SKIP 4
 
-class TempHumiditySensor : public DeferredSensorReader {
+class TempHumiditySensor : public SensorBase {
     public:
         virtual void init() = 0;
         virtual bool read(TempHumidity &output) = 0;
@@ -20,6 +20,7 @@ class TempHumiditySensor : public DeferredSensorReader {
 class BME280Sensor : public TempHumiditySensor {
     private:     
         Adafruit_BME280 bme;
+        TwoWire* _wire;
         bool isOk;
         I2CMultiplexer* plexer;
         byte busNum;
@@ -32,17 +33,19 @@ class BME280Sensor : public TempHumiditySensor {
             }
         } 
     public:
-        BME280Sensor(I2CMultiplexer* multiplexer, byte multiplexer_bus) {
+        BME280Sensor(TwoWire* wire, I2CMultiplexer* multiplexer, byte multiplexer_bus) {
+            this->_wire = wire;
             this->isMultiplexer = true;
             this->plexer = multiplexer;
             this->busNum = multiplexer_bus;
         }
-        BME280Sensor() {
+        BME280Sensor(TwoWire* wire) {
+            this->_wire = wire;
             this->isMultiplexer = false;
         }
         void init() {
             doPlex();
-            this->isOk = (this->bme.begin(0x76, &Wire) != 0);
+            this->isOk = (this->bme.begin(0x76, this->_wire) != 0);
             if (!this->isOk) {
                 dbg.println("bme not ok");
             }
@@ -108,7 +111,6 @@ class BME280Sensor : public TempHumiditySensor {
             }
             
             DeferredReading reading;
-            reading.sourceSensor = this;
             reading.deferUntil = 0;
             if (this->isOk) {
                 this->doPlex();
@@ -136,6 +138,7 @@ class BME280Sensor : public TempHumiditySensor {
 
 class SHTC3Sensor : public TempHumiditySensor {
     private:
+        TwoWire* _wire;
         SHTC3 mySHTC3;
         bool isOk;
         I2CMultiplexer* plexer;
@@ -148,19 +151,21 @@ class SHTC3Sensor : public TempHumiditySensor {
             }
         }
     public:
-        SHTC3Sensor(I2CMultiplexer* multiplexer, byte multiplexer_bus) {
+        SHTC3Sensor(TwoWire* wire, I2CMultiplexer* multiplexer, byte multiplexer_bus) {
+            this->_wire = wire;
             this->isMultiplexer = true;
             this->plexer = multiplexer;
             this->busNum = multiplexer_bus;
         }
-        SHTC3Sensor() {
+        SHTC3Sensor(TwoWire* wire) {
+            this->_wire = wire;
             this->isMultiplexer = false;
         }
         void init() {
             if (this->isMultiplexer) {
                 this->plexer->setBus(this->busNum);
             }
-            mySHTC3.begin(Wire);
+            mySHTC3.begin(*this->_wire);
             this->isOk = this->mySHTC3.passIDcrc;
             if (this->isOk) {
                 this->isOk = (mySHTC3.setMode(SHTC3_CMD_CSE_TF_NPM) == SHTC3_Status_Nominal);
@@ -222,7 +227,6 @@ class SHTC3Sensor : public TempHumiditySensor {
         }
         DeferredReading startRead() {
             DeferredReading reading;
-            reading.sourceSensor = this;
             reading.deferUntil = 0;
             this->doPlex();
             this->mySHTC3.update();    

@@ -10,6 +10,10 @@
 #define MQTT_TOPIC "GROWBOT"
 #define MQTT_CONFIG_TOPIC "GROWBOT_CONFIG"
 
+
+#define PH_ENABLE_PIN 12
+#define TDS_ENABLE_PIN 13
+
 // version of the GrowbotConfig in eeprom, change if GrowbotConfic struct changes
 #define CONFIG_VERSION 5
 
@@ -19,6 +23,8 @@
 #define I2C_POWER_CTL_ADDR 0x27
 #define I2C_SDA_PIN 21
 #define I2C_SCL_PIN 22
+#define I2C_2_SDA_PIN 18
+#define I2C_2_SCL_PIN 19
 #define I2C_FREQ 100000
 #define I2C_MULTIPLEXER_ADDRESS 0x71
 
@@ -74,6 +80,10 @@
 #define LUX_SENSOR_4_MX_PORT INNER_AMBIENT_2_MX_PORT
 // #define LUX_SENSOR_5_MX_PORT INNER_LIGHTS_MX_PORT
 
+#define PH_SENSOR_MX_PORT 5
+#define TDS_SENSOR_MX_PORT 5
+#define POWER_MX_PORT 7
+#define WATER_LEVEL_MX_PORT 1
 
 
 #endif

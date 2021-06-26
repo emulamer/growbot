@@ -1,18 +1,18 @@
 #include <Arduino.h>
 #include <SparkFun_SHTC3.h>
 #include "I2CMultiplexer.h"
-#include "GrowbotData.h"
+#include "../GrowbotData.h"
 #include <Max44009.h>
-#include "DebugUtils.h"
-#include "DeferredSensorReader.h"
-
+#include "../DebugUtils.h"
+#include "../SensorBase.h"
+#define LUX_SENSOR_ADDR 0x4a
 #ifndef LUXSENSOR_H
 #define LUXSENSOR_H
 
 uint8_t CDR = 0;
 uint8_t TIM = 0;
 
-class LuxSensor : public DeferredSensorReader {
+class LuxSensor : public SensorBase {
     public:
         virtual void init();
         virtual float readLux();
@@ -20,7 +20,8 @@ class LuxSensor : public DeferredSensorReader {
 
 class Max44009Sensor : public LuxSensor {
     private:
-        Max44009 myLux = Max44009(0x4a, Max44009::Boolean::False);
+        TwoWire* _wire;
+        Max44009 myLux = Max44009(LUX_SENSOR_ADDR, Max44009::Boolean::False);
         bool isOk;
         I2CMultiplexer* plexer;
         byte busNum;
@@ -31,15 +32,18 @@ class Max44009Sensor : public LuxSensor {
             }
         }
     public: 
-        Max44009Sensor(I2CMultiplexer* multiplexer, byte multiplexer_bus) {
+        Max44009Sensor(TwoWire* wire, I2CMultiplexer* multiplexer, byte multiplexer_bus) {
+            this->_wire = wire;
             this->isMultiplexer = true;
             this->plexer = multiplexer;
             this->busNum = multiplexer_bus;
         }
-        Max44009Sensor() {
+        Max44009Sensor(TwoWire* wire) {
+            this->_wire = wire;
             this->isMultiplexer = false;
         }
         void init() {
+            this->myLux.configure(LUX_SENSOR_ADDR, this->_wire, Max44009::Boolean::False);
             if (this->isMultiplexer) {
                 this->plexer->setBus(this->busNum);
             }
@@ -47,8 +51,7 @@ class Max44009Sensor : public LuxSensor {
             int err = this->myLux.getError();
             if (err != 0)
             {
-                dbg.print("failed to init lux sensor: ");
-                dbg.println(err);
+                dbg.printf("failed to init lux sensor: %d\n", err);
                 this->isOk = false;
             } else {
                 this->isOk = true;
@@ -72,7 +75,6 @@ class Max44009Sensor : public LuxSensor {
         }
         DeferredReading startRead() {
             DeferredReading reading;
-            reading.sourceSensor = this;
             reading.readingCount = 1;
             reading.isComplete = true;
             reading.deferUntil = 0;

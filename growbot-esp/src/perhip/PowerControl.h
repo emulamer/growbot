@@ -1,8 +1,8 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <Ticker.h>
-#include "GrowbotData.h"
-#include "DebugUtils.h"
+#include "../GrowbotData.h"
+#include "../DebugUtils.h"
 #ifndef POWERCONTROL_H
 #define POWERCONTROL_H
 
@@ -18,6 +18,10 @@ const byte levelMap[] = {
 
 class PowerControl {
     private:
+        I2CMultiplexer* plexer;
+        byte busNum;
+        bool isMultiplexer;
+        TwoWire* _wire;
         bool toggledOn[4];
         byte m_address;
         int m_targetIdx[4];
@@ -27,7 +31,11 @@ class PowerControl {
         unsigned long spinUpEndStamp[4];
         bool timerRunning;
         bool doingSomething = false;
-
+        void doPlex() {
+            if (this->isMultiplexer) {
+                this->plexer->setBus(this->busNum);
+            }
+        }
         int getIdx(byte portNum, int level) {
             int idx = 0;
             if (level <= 0) {
@@ -44,10 +52,11 @@ class PowerControl {
        //     dbg.printf("DIRECT: %d => %d\r\n", portNum, idx);
             byte portAddr = portNum + PORT_ADDR_OFFSET;
             byte val = levelMap[idx];
-            Wire.beginTransmission(this->m_address);
-            Wire.write(portAddr);
-            Wire.write(val);
-            Wire.endTransmission();
+            this->doPlex();
+            this->_wire->beginTransmission(this->m_address);
+            this->_wire->write(portAddr);
+            this->_wire->write(val);
+            this->_wire->endTransmission();
         }
         void onTimerTick() {
             //dbg.println("power timer tick");
@@ -115,7 +124,33 @@ class PowerControl {
             doingSomething = false;
         }
     public:
-        PowerControl(byte address) {
+        PowerControl(TwoWire* wire, I2CMultiplexer* multiplexer, byte multiplexer_bus, byte address) {
+            this->plexer = multiplexer;
+            this->busNum = multiplexer_bus;
+            this->isMultiplexer = true;
+            this->_wire = wire;
+            this->m_address = address;
+            this->timerRunning = false;
+            for (byte i = 0; i < 4; i++) {
+                this->m_calibrations[i].maxOffset = 31;
+                this->m_calibrations[i].minOffset = 1;
+                this->m_calibrations[i].spinUpSec = 0;
+                this->m_targetIdx[i] = 0;            
+                this->m_channelLevel[i] = 0;
+                this->toggledOn[i] = true;
+                this->setChannelIdxDirect(i, 32);
+                if (this->m_calibrations[i].spinUpSec > 0) {
+                    this->spinUpEndStamp[i] = millis() + (unsigned long)(this->m_calibrations[i].spinUpSec * 1000);
+                    if (!this->timerRunning) {
+                        this->timerRunning = true;
+                        this->spinUpTimer.attach(1,  +[](PowerControl* instance) { instance->onTimerTick(); }, this);
+                    }
+                }
+            }            
+        }
+        PowerControl(TwoWire* wire, byte address) {
+            this->isMultiplexer = false;
+            this->_wire = wire;
             this->m_address = address;
             this->timerRunning = false;
             for (byte i = 0; i < 4; i++) {

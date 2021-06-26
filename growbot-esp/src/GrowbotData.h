@@ -1,12 +1,17 @@
 #include <Arduino.h>
-#include "WaterLevel.h"
 
 #ifndef GROWBOTDATA_H
 #define GROWBOTDATA_H
 
 //note: data struct currently accounts for 4 buckets, when they're hooked up make this NUM_BUCKETS
 #define DATA_BUCKET_COUNT 4
+struct WaterLevelCalibration {
+    //centimeters of distance when bucket is full
+    int fullCm;
 
+    //centimeters of distance when bucket is empty
+    int emptyCm;
+};
 struct WaterData {
     float ph;
     float tds;

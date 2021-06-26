@@ -1,9 +1,9 @@
 #include <Arduino.h>
 #include <Ezo_i2c.h> 
-#include "GrowbotData.h"
+#include "../GrowbotData.h"
 #include "I2CMultiplexer.h"
-#include "DebugUtils.h"
-#include "DeferredSensorReader.h"
+#include "../DebugUtils.h"
+#include "../SensorBase.h"
 
 #ifndef EZOSENSOR_H
 #define EZOSENSOR_H
@@ -14,7 +14,7 @@
 #define EZO_CALIBRATE_HIGH 3
 #define EZO_CALIBRATE_DRY 5
 
-class EzoSensor : public DeferredSensorReader {
+class EzoSensor : public SensorBase {
     protected:     
         Ezo_board* board;
         const char* name;
@@ -24,6 +24,7 @@ class EzoSensor : public DeferredSensorReader {
         float waterTempC;
         bool isMultiplexer;
         char* buffer;
+        byte enPin;
         void doPlex() {
             if (this->isMultiplexer) {
                 this->plexer->setBus(this->busNum);
@@ -52,13 +53,12 @@ class EzoSensor : public DeferredSensorReader {
                 this->board->send_cmd(this->buffer);
                 delay(900);
                 if (!this->recCheck()) {
-                    dbg.printf("%s: read with temperature compensation failed!  retry %d\n", this->name, i);
-                    dbg.println();
+                    dbg.printf("%s: read with temperature compensation failed on retry %d! Response: %s\n", this->name, i, this->buffer);
                 } else {
                     break;
                 }
             }
-            dbg.printf("sensor %s responded with %s\n", this->name, this->buffer);
+            //dbg.printf("Sensor %s responded with %s\n", this->name, this->buffer);
             float val = atof(this->buffer);
             return val;
         }
@@ -88,27 +88,33 @@ class EzoSensor : public DeferredSensorReader {
         }
         
     public:
-        EzoSensor(I2CMultiplexer* multiplexer, byte multiplexer_bus, const char* boardName, int boardAddress) {
+        EzoSensor(TwoWire* wire, I2CMultiplexer* multiplexer, byte multiplexer_bus, const char* boardName, int boardAddress, byte enablePin) {
             this->name = boardName;
-            this->board = new Ezo_board(boardAddress, boardName);
+            this->enPin = enablePin;
+            this->board = new Ezo_board(boardAddress, wire);
             this->buffer = (char *)malloc(EZO_BUFFER_LEN);
             this->isMultiplexer = true;
             this->plexer = multiplexer;
             this->busNum = multiplexer_bus;            
         } 
-        EzoSensor(const char* boardName, int boardAddress) {
+        EzoSensor(TwoWire* wire, const char* boardName, int boardAddress, byte enablePin) {
             this->name = boardName;
-            this->board = new Ezo_board(boardAddress, boardName);
+            this->enPin = enablePin;
+            this->board = new Ezo_board(boardAddress, wire);
             this->buffer = (char *)malloc(EZO_BUFFER_LEN);
             this->isMultiplexer = false;            
         }
 
         virtual void init() {
+            pinMode(this->enPin, OUTPUT);
+            digitalWrite(this->enPin, 0);
+            delay(200);
+            digitalWrite(this->enPin, 1);
             this->doPlex();
             this->board->send_cmd("Status");
             delay(300);
             if (this->recCheck()) {
-                dbg.printf("%s: sensor responded with: %s\n", this->name, this->buffer);
+                //dbg.printf("%s: sensor responded with: %s\n", this->name, this->buffer);
                 this->isOk = true;
             } else {
                 dbg.printf("%s: sensor failed init\n", this->name);
@@ -116,7 +122,9 @@ class EzoSensor : public DeferredSensorReader {
             }
         }
         virtual bool read(WaterData &output) = 0;
-
+        void preupdate(GrowbotData* data) {
+            this->setWaterTempCompensation(data->controlBucket.temperatureC);
+        }
         void setWaterTempCompensation(float tempC) {
             if (isnan(tempC) || tempC < 0 || tempC > 50) {
                 dbg.printf("Invalid temp provided for compensation: %f\n", tempC);
@@ -127,7 +135,6 @@ class EzoSensor : public DeferredSensorReader {
         }
         virtual DeferredReading startRead() {
             DeferredReading reading;            
-            reading.sourceSensor = this;
             reading.isComplete = false;
             reading.readingCount = 1;
             reading.isSuccessful = false;

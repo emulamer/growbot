@@ -1,11 +1,12 @@
 #include <Arduino.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
-#include "DebugUtils.h"
+#include "../DebugUtils.h"
+#include "SensorBase.h"
 #ifndef WATERTEMPSENSOR_H
 #define WATERTEMPSENSOR_H
 
-class WaterTempSensor : public DeferredSensorReader {
+class WaterTempSensor : public SensorBase {
     public:
         virtual void init();
         virtual float read();
@@ -17,15 +18,9 @@ class DallasWaterTempSensor : public WaterTempSensor {
         DallasTemperature* sensor;
         bool isOk = false;
     public:
-        DallasWaterTempSensor(DallasTemperature* sensor, DeviceAddress address) {
-            this->addr[0] = address[0];
-            this->addr[1] = address[1];
-            this->addr[2] = address[2];
-            this->addr[3] = address[3];
-            this->addr[4] = address[4];
-            this->addr[5] = address[5];
-            this->addr[6] = address[6];
-            this->addr[7] = address[7];
+        DallasWaterTempSensor(DallasTemperature* sensor, std::initializer_list<uint8_t> address) {
+            assert(address.size() == 8);
+            std::copy(address.begin(), address.end(), this->addr);
             this->sensor = sensor;
         }
         void init() {
@@ -39,11 +34,13 @@ class DallasWaterTempSensor : public WaterTempSensor {
                     dbg.printf("Dallas sensor at address %x %x %x %x %x %x %x %x failed to set sensor resolution!\n", this->addr[0], this->addr[1], this->addr[2], this->addr[3], this->addr[4], this->addr[5], this->addr[6], this->addr[7]);
                     this->isOk = false;
                 }
-            }           
+            }
+            this->sensor->requestTemperatures();
         }
 
         float read() {
             if (!this->isOk) {
+                dbg.printf("DallasWaterTempSensor: not on on read(), calling init() again...\n");
                 this->init();
             }
             if (!this->isOk) {
@@ -68,7 +65,6 @@ class DallasWaterTempSensor : public WaterTempSensor {
         }
         DeferredReading startRead() {
             DeferredReading reading;
-            reading.sourceSensor = this;
             reading.isComplete = false;
             reading.isSuccessful = false;
             reading.values[0] = NAN;

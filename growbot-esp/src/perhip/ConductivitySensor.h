@@ -1,14 +1,14 @@
 
 #include "EzoSensor.h"
-#include "GrowbotData.h"
-#include "DebugUtils.h"
+#include "../GrowbotData.h"
+#include "../DebugUtils.h"
 #ifndef CONDUCTIVITYSENSOR_H
 #define CONDUCTIVITYSENSOR_H
 class ConductivitySensor : public EzoSensor {
      public:
-        ConductivitySensor(I2CMultiplexer* multiplexer, byte multiplexer_bus) : EzoSensor::EzoSensor(multiplexer, multiplexer_bus, "EC", 0x64){
+        ConductivitySensor(TwoWire* wire, I2CMultiplexer* multiplexer, byte multiplexer_bus, byte enablePin) : EzoSensor::EzoSensor(wire, multiplexer, multiplexer_bus, "EC", 0x64, enablePin){
         }
-        ConductivitySensor() : EzoSensor::EzoSensor("EC", 0x64){
+        ConductivitySensor(TwoWire* wire, byte enablePin) : EzoSensor::EzoSensor(wire, "EC", 0x64, enablePin){
         }
         bool read(WaterData &output) {
             float reading = this->readSensor();
