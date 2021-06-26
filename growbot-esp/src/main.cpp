@@ -1,21 +1,15 @@
 #include <Arduino.h>
 #include <Wire.h>
-#include <DHT.h>
 #include "GrowbotData.h"
 #include <OneWire.h>
 #include <DallasTemperature.h>
-#include "EEPROMAnything.h"
-#include <EEPROM.h>
 #include "DataConnection.h"
-#include "WifiManager.h"
 #include "Config.h" //all the config stuff is in here
 #include "DebugUtils.h"
-#include <ArduinoOTA.h>
 #include <Wire.h>
-#include <driver/periph_ctrl.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "soc/rtc_wdt.h"
+#include "Sensorama.h"
 #include "ReadingNormalizer.h"
 #include "perhip/WaterTempSensor.h"
 #include "perhip/LuxSensor.h"
@@ -24,8 +18,25 @@
 #include "perhip/ConductivitySensor.h"
 #include "perhip/TempHumiditySensor.h"
 #include "perhip/PowerControl.h"
+#ifdef ARDUINO_ARCH_ESP32
+#include <ArduinoOTA.h>
+#include "soc/rtc_wdt.h"
+#include <driver/periph_ctrl.h>
+#include "WifiManager.h"
+#include "MQTTDataConnection.h"
+#include "EEPROMNVStore.h"
 
-#include "Sensorama.h"
+WifiManager wifiMgr(WIFI_SSID, WIFI_PASSWORD);
+MQTTDataConnection dataConn(MQTT_HOST, MQTT_PORT, MQTT_TOPIC, MQTT_CONFIG_TOPIC);
+EEPROMNVStore nvStore;
+#endif
+#ifdef ARDUINO_ARCH_RP2040
+#include "SerialDataConnection.h"
+#include "PINVStore.h"
+SerialDataConnection dataConn = SerialDataConnection();
+PINVStore nvStore;
+#endif
+
 #define EC_CALIBRATION_LOW 12880
 #define EC_CALIBRATION_HIGH 80000
 #define PH_CALIBRATION_MID 7
@@ -43,110 +54,29 @@
 #define GROWBOT_MODE_CALIBRATING_TDS_SENSOR_SET_HIGH 0x33
 #define GROWBOT_MODE_REBOOT 0x99
 
-WifiManager wifiMgr(WIFI_SSID, WIFI_PASSWORD);
-MQTTDataConnection dataConn(MQTT_HOST, MQTT_PORT, MQTT_TOPIC, MQTT_CONFIG_TOPIC);
+
 
 GrowbotConfig config;
 GrowbotData data;
 GrowbotState state;
 //i2c stuff
 I2CMultiplexer i2cMultiplexer(&Wire, I2C_MULTIPLEXER_ADDRESS);
-I2CMultiplexer i2cMultiplexer2(&Wire1, I2C_MULTIPLEXER_ADDRESS);
-PowerControl powerCtl(&Wire1, &i2cMultiplexer2, POWER_MX_PORT, I2C_POWER_CTL_ADDR);
+I2CMultiplexer i2cMultiplexer2(&Wire, I2C_MULTIPLEXER_ADDRESS);
+PowerControl powerCtl(&Wire, &i2cMultiplexer2, POWER_MX_PORT, I2C_POWER_CTL_ADDR);
 
 void doImportantTicks() {
+  #if ARDUINO_ARCH_ESP32
   ArduinoOTA.handle();
+  #endif
+  powerCtl.handle();
 }
+
 Sensorama sensorama = Sensorama(&i2cMultiplexer, &i2cMultiplexer2, &data, &config, doImportantTicks);
 
-/*
-OneWire oneWire(ONEWIRE_PIN);
-DallasTemperature waterTempSensor(&oneWire);
-
-// onewire water temp sensor addresses
-DallasWaterTempSensor wtControlBucket = DallasWaterTempSensor(&waterTempSensor, WT_CONTROL_BUCKET_ADDRESS);
-
-#if NUM_BUCKETS > 0
-DallasWaterTempSensor wtBucketAddresses[NUM_BUCKETS] = { 
-          new DallasWaterTempSensor(&waterTempSensor, WT_BUCKET_ADDRESSES[0]),
-          new DallasWaterTempSensor(&waterTempSensor, WT_BUCKET_ADDRESSES[1]),
-          new DallasWaterTempSensor(&waterTempSensor, WT_BUCKET_ADDRESSES[2]),
-          new DallasWaterTempSensor(&waterTempSensor, WT_BUCKET_ADDRESSES[3]) };
-#endif
-
-
-
-
-
-
-//water level ultrasonic sensors
-WaterLevel wlControlBucket = WaterLevel(&Wire1, &i2cMultiplexer2, WL_CONTROL_BUCKET_MULTIPLEXER_PORT);
-
-#if NUM_BUCKETS > 0
-WaterLevel* wlBuckets[NUM_BUCKETS];
-#endif
-
-//ambient temp/humidity sensors
-#ifdef INNER_EXHAUST_TYPE
-INNER_EXHAUST_TYPE thInnerExhaust = INNER_EXHAUST_TYPE(&Wire, &i2cMultiplexer, INNER_EXHAUST_MX_PORT);
-#endif
-#ifdef INNER_INTAKE_TYPE
-INNER_INTAKE_TYPE thInnerIntake = INNER_INTAKE_TYPE(&Wire, &i2cMultiplexer, INNER_INTAKE_MX_PORT);
-#endif
-#ifdef OUTER_INTAKE_TYPE
-OUTER_INTAKE_TYPE thOuterIntake = OUTER_INTAKE_TYPE(&Wire, &i2cMultiplexer, OUTER_INTAKE_MX_PORT);
-#endif
-#ifdef OUTER_EXHAUST_TYPE
-OUTER_EXHAUST_TYPE thOuterExhaust = OUTER_EXHAUST_TYPE(&Wire, &i2cMultiplexer, OUTER_INTAKE_MX_PORT);
-#endif
-#ifdef INNER_AMBIENT_1_TYPE
-INNER_AMBIENT_1_TYPE thInnerAmbient1 = INNER_AMBIENT_1_TYPE(&Wire, &i2cMultiplexer, INNER_AMBIENT_1_MX_PORT);
-#endif
-#ifdef INNER_AMBIENT_2_TYPE
-INNER_AMBIENT_2_TYPE thInnerAmbient2 = INNER_AMBIENT_2_TYPE(&Wire, &i2cMultiplexer, INNER_AMBIENT_2_MX_PORT);
-#endif
-#ifdef INNER_AMBIENT_3_TYPE
-INNER_AMBIENT_3_TYPE thInnerAmbient3 = INNER_AMBIENT_3_TYPE(&Wire, &i2cMultiplexer, INNER_AMBIENT_3_MX_PORT);
-#endif
-#ifdef LIGHTS_TEMP_TYPE
-LIGHTS_TEMP_TYPE thLights = LIGHTS_TEMP_TYPE(&Wire, &i2cMultiplexer, INNER_LIGHTS_MX_PORT);
-#endif
-
-//lux sensors (built into the BME280 modules)
-#ifdef LUX_SENSOR_1_MX_PORT
-Max44009Sensor luxAmbient1 = Max44009Sensor(&Wire, &i2cMultiplexer, LUX_SENSOR_1_MX_PORT);
-#endif
-
-#ifdef LUX_SENSOR_2_MX_PORT
-Max44009Sensor luxAmbient2 = Max44009Sensor(&Wire, &i2cMultiplexer, LUX_SENSOR_2_MX_PORT);
-#endif
-
-#ifdef LUX_SENSOR_3_MX_PORT
-Max44009Sensor luxAmbient3 = Max44009Sensor(&Wire, &i2cMultiplexer, LUX_SENSOR_3_MX_PORT);
-#endif
-
-#ifdef LUX_SENSOR_4_MX_PORT
-Max44009Sensor luxAmbient4 = Max44009Sensor(&Wire, &i2cMultiplexer, LUX_SENSOR_4_MX_PORT);
-#endif
-
-#ifdef LUX_SENSOR_5_MX_PORT
-Max44009Sensor luxAmbient5 = Max44009Sensor(&Wire, &i2cMultiplexer, LUX_SENSOR_5_MX_PORT);
-#endif
- 
-PhSensor phSensor = PhSensor(&Wire1, &i2cMultiplexer2, PH_SENSOR_MX_PORT);
-ConductivitySensor tdsSensor = ConductivitySensor(&Wire1, &i2cMultiplexer2, TDS_SENSOR_MX_PORT);
-*/
 int operating_mode = GROWBOT_MODE_NORMAL;
 
 void updateFromConfig() {
-  /*
-  wlControlBucket.setCalibration(config.controlWaterLevelCalibration);
-  #if NUM_BUCKETS > 0
-  for (byte i = 0; i < NUM_BUCKETS; i++) {
-    wlBuckets[i]->setCalibration(config.bucketWaterLevelCalibration[i]);
-  }
-  #endif
-  */
+
   sensorama.configChanged();
   //set power calibration
   powerCtl.setPowerCalibration(POWER_EXHAUST_FAN_PORT, config.exhaustFanCalibration, false);
@@ -164,36 +94,7 @@ void updateFromConfig() {
   powerCtl.setChannelLevel(POWER_PUMP_PORT, config.pumpPercent);
 }
 
-void loadConfig() {
-  byte version = EEPROM.read(0);
-  if (version != CONFIG_VERSION) {
-    dbg.printf("Config stored in eeprom is old version %d\n", version);
-    config.exhaustFanPercent = 100;
-    config.intakeFanPercent = 100;
-    config.pumpPercent = 100;
-    config.controlWaterLevelCalibration.emptyCm = 14;
-    config.controlWaterLevelCalibration.fullCm = 4;
-    for (byte i = 0; i < NUM_BUCKETS; i++) {
-      config.bucketWaterLevelCalibration[i].emptyCm = 14;
-      config.bucketWaterLevelCalibration[i].fullCm = 4;
-    }
-    config.exhaustFanCalibration.maxOffset = 30;
-    config.exhaustFanCalibration.minOffset = 1;
-    config.intakeFanCalibration.maxOffset = 30;
-    config.intakeFanCalibration.minOffset = 1;
-    config.pumpCalibration.maxOffset = 30;
-    config.pumpCalibration.minOffset = 1;
-    config.samplingIntervalMS = 10000;
-    config.pumpOn = true;
-    config.exhaustFanOn = true;
-    config.intakeFanOn = true;
-    config.overheadLightsOn = true;
-    config.pumpOn = true;
-    config.sideLightsOn = true;
-  } else {
-    EEPROM_readAnything<GrowbotConfig>(1, config);
-  }
-}
+#ifdef ARDUINO_ARCH_ESP32
 void reset_system()
 {
     rtc_wdt_protect_off();      //Disable RTC WDT write protection
@@ -203,12 +104,12 @@ void reset_system()
     rtc_wdt_enable();           //Start the RTC WDT timer
     rtc_wdt_protect_on();       //Enable RTC WDT write protection
 }
-void saveConfig() {
-  EEPROM.write(0, (byte)CONFIG_VERSION);
-  EEPROM_writeAnything<GrowbotConfig>(1, config);
-  EEPROM.commit();
-  dbg.println("saved config");
+#endif
+#ifdef ARDUINO_ARCH_RP2040
+void reset_system() {
+  //todo:??????
 }
+#endif
 
 void sendState() {
     state.config = config;
@@ -221,7 +122,7 @@ void sendState() {
 
 void onNewConfig(GrowbotConfig &newConfig) {
   config = newConfig;
-  saveConfig();
+  nvStore.writeConfig(&config);
   updateFromConfig();
   sendState();
 }
@@ -341,11 +242,8 @@ void onModeChange(byte mode) {
   }
   sendState();
 }
-
-void setup() {
-  EEPROM.begin(512);
-  Serial.begin(115200);
-  dbg.println("Growbot v.01 starting up...");
+#ifdef ARDUINO_ARCH_ESP32
+void setupIO() {
   periph_module_disable(PERIPH_I2C0_MODULE);
   periph_module_disable(PERIPH_I2C1_MODULE);
   digitalWrite(I2C_SDA_PIN, 0);
@@ -385,11 +283,26 @@ void setup() {
       else if (error == OTA_RECEIVE_ERROR) dbg.println("Receive Failed");
       else if (error == OTA_END_ERROR) dbg.println("End Failed");
     });
-
-
-
+    dbg.print("Wifi...");
+    wifiMgr.init();
+    dbg.println("connecting.");
+}
+#elif defined(PICO_SDK_VERSION_MAJOR)
+void setupIO() {
+  //stupid garbage implementation of Wire.h, can't even change the pins
+  Wire.begin();
+  Wire.setClock(I2C_FREQ);
+}
+#endif
+void setup() {  
+  Serial.begin(115200);
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, HIGH);
+  delay(5000);
+  dbg.println("Growbot v.01 starting up...");
+  setupIO();
   dbg.print("Loading config...");
-  loadConfig();
+  nvStore.readConfig(&config);
   updateFromConfig();
   dbg.println("loaded.");
 
@@ -397,10 +310,6 @@ void setup() {
   sensorama.init();
   //initSensors();
   dbg.println("initialized.");
-
-  dbg.print("Wifi...");
-  wifiMgr.init();
-  dbg.println("connecting.");
 
   dbg.print("Starting data connection...");
   dataConn.onModeChange(onModeChange);
@@ -422,6 +331,7 @@ bool tickNow() {
 
 
 void loop() {
+  return;
   doImportantTicks();
       // dbg.printf("Scanning port 0\n");
       // debug_find_i2c(0, i2cMultiplexer);

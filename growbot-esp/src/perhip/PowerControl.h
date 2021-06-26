@@ -1,12 +1,12 @@
 #include <Arduino.h>
 #include <Wire.h>
-#include <Ticker.h>
 #include "../GrowbotData.h"
 #include "../DebugUtils.h"
 #ifndef POWERCONTROL_H
 #define POWERCONTROL_H
 
 #define PORT_ADDR_OFFSET 0x80;
+#define TIMER_TICK_INTERVAL_MS 1000;
 
 //thanks to anonymous amazon customer for this map
 const byte levelMap[] = {
@@ -27,7 +27,6 @@ class PowerControl {
         int m_targetIdx[4];
         int m_channelLevel[4];
         PowerControlCalibration m_calibrations[4];
-        Ticker spinUpTimer;
         unsigned long spinUpEndStamp[4];
         bool timerRunning;
         bool doingSomething = false;
@@ -36,6 +35,7 @@ class PowerControl {
                 this->plexer->setBus(this->busNum);
             }
         }
+
         int getIdx(byte portNum, int level) {
             int idx = 0;
             if (level <= 0) {
@@ -84,7 +84,6 @@ class PowerControl {
             }
             if (stopTimer) {
             //    dbg.println("\t\ttmr: timer stopping");
-                this->spinUpTimer.detach();
                 this->timerRunning = false;
             }            
         }
@@ -113,7 +112,6 @@ class PowerControl {
                 if (!this->timerRunning) {
              //       dbg.printf("\tint: starting timer\r\n");
                     this->timerRunning = true;
-                    this->spinUpTimer.attach(1,  +[](PowerControl* instance) { instance->onTimerTick(); }, this);
                 } else {
              //       dbg.printf("\tint: timer already running\r\n");
                 }
@@ -141,10 +139,7 @@ class PowerControl {
                 this->setChannelIdxDirect(i, 32);
                 if (this->m_calibrations[i].spinUpSec > 0) {
                     this->spinUpEndStamp[i] = millis() + (unsigned long)(this->m_calibrations[i].spinUpSec * 1000);
-                    if (!this->timerRunning) {
-                        this->timerRunning = true;
-                        this->spinUpTimer.attach(1,  +[](PowerControl* instance) { instance->onTimerTick(); }, this);
-                    }
+                    this->timerRunning = true;
                 }
             }            
         }
@@ -163,14 +158,16 @@ class PowerControl {
                 this->setChannelIdxDirect(i, 32);
                 if (this->m_calibrations[i].spinUpSec > 0) {
                     this->spinUpEndStamp[i] = millis() + (unsigned long)(this->m_calibrations[i].spinUpSec * 1000);
-                    if (!this->timerRunning) {
-                        this->timerRunning = true;
-                        this->spinUpTimer.attach(1,  +[](PowerControl* instance) { instance->onTimerTick(); }, this);
-                    }
+                    this->timerRunning = true;
                 }
             }            
         }
-
+        void handle() {
+            if (!this->timerRunning) {
+                return;
+            }
+            this->onTimerTick();
+        }
         void setPowerCalibration(byte port, PowerControlCalibration &calibration, bool updateLevel) {
             if (port > 3) {
                 return;

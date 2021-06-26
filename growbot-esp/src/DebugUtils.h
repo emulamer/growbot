@@ -1,19 +1,55 @@
 #include <Arduino.h>
+#include <stdarg.h>
+#include <Print.h>
 #include <Wire.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
-#include <Print.h>
-#include <WiFiUdp.h>
-#include <Wifi.h>
+#include <stdarg.h>
 #include "perhip/I2CMultiplexer.h"
+
 #ifndef DEBUGUTILS_H
 #define DEBUGUTILS_H
+#define PRINTF_BUF 200 // define the tmp buffer size (change if desired)
+class SerialPrint : public Print {
+    public:
+        SerialPrint() : Print() 
+        { }
+        virtual ~SerialPrint() {}
+        
+        size_t write(const uint8_t *buffer, size_t size)
+        {
+          return size;
+            //sendto(_sock,buffer, size, 0, (const struct sockaddr*) &_send_addr, sizeof(_send_addr));
+            return Serial.write((const char*)buffer, size);
+        }
+        size_t write(uint8_t) {
+            return 1;
+        }
+
+        void printf(const char *format, ...)
+        {
+          return;
+          char buf[PRINTF_BUF];
+          va_list ap;
+          va_start(ap, format);
+          vsnprintf(buf, sizeof(buf), format, ap);
+          for(char *p = &buf[0]; *p; p++) 
+          {
+            write(*p);
+          }
+          va_end(ap);
+        }
+};
+
+
+#ifdef ARDUINO_ARCH_ESP32
+#include <WiFiUdp.h>
+#include <Wifi.h>
 const char * udpAddress = "192.168.1.219";
 const int udpPort = 44444;
-
 class UdpPrint : public Print {
     private: 
-     WiFiUDP udp;
+    WiFiUDP udp;
     IPAddress multicastAddress = IPAddress(255, 255, 255, 255);
     bool wifiReady;
 
@@ -63,7 +99,9 @@ class UdpPrint : public Print {
 
 };
 UdpPrint dbg;
-
+#else
+SerialPrint dbg;
+#endif
 
 void printHex(uint8_t num) {
   char hexCar[2];
@@ -130,7 +168,20 @@ void debug_find_i2c(byte port, I2CMultiplexer &plexer) {
   for (int i = 0; i < 8; i++) {
     dbg.printf("Selecting bus %d...\n", i);
     plexer.setBus(i);
-    debug_scan_i2c((port==0)?Wire:Wire1,port, i);
+    debug_scan_i2c(Wire, port, i);
   }
 }
+static bool millisElapsed(unsigned long ms) {
+            if (ms <= millis()) {
+            return true;
+            }
+            //todo: need to make sure this handles the 52 day wrap here or things will break
+            if (abs(ms - millis()) > 10000000) {
+            return true;
+            }
+            return false;
+        }
 #endif
+
+
+

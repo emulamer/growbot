@@ -17,7 +17,7 @@
 #define MAX_READ_TIME_MS 5000
 
 #define MAKELUX(NAME, MXPORT) new SensorHolder(\
-                new Max44009Sensor(&Wire1, i2cMultiplexer2, MXPORT),\
+                new Max44009Sensor(&Wire, i2cMultiplexer, MXPORT),\
                 { new ReadingNormalizer(#NAME, 10, 3, .5f, 0, 100000) },\
                 #NAME,\
                 1,\
@@ -26,7 +26,7 @@
             
 
 #define MAKETEMPHUMID(NAME, TYPE, MXPORT) new SensorHolder(\
-                new TYPE(&Wire1, i2cMultiplexer2, MXPORT),\
+                new TYPE(&Wire, i2cMultiplexer, MXPORT),\
                 { new ReadingNormalizer(#NAME ".temperatureC", 10, 3, .5f, 0, 70),\
                   new ReadingNormalizer(#NAME ".humidity", 10, 3, .5f, 1, 100) },\
                 #NAME,\
@@ -36,7 +36,7 @@
             
 
 #define MAKEWATERLEVEL(NAME, MXPORT, CONFIGPROP) new SensorHolder(\
-                new WaterLevel(&Wire1, i2cMultiplexer2, MXPORT),\
+                new WaterLevel(&Wire, i2cMultiplexer, MXPORT),\
                 {new ReadingNormalizer(#NAME, 10, 3, .5f, 0, 70)},\
                 #NAME,\
                 1,\
@@ -51,16 +51,16 @@
                 { &this->data->NAME },\
                 NULL)
 
-#define MAKEPH(NAME, MXPORT, ENABLEPIN) new SensorHolder(\
-                new PhSensor(&Wire, i2cMultiplexer2, MXPORT, ENABLEPIN),\
+#define MAKEPH(NAME, ENABLEPIN) new SensorHolder(\
+                new PhSensor(&Wire, ENABLEPIN),\
                 {new ReadingNormalizer(#NAME, 10, 3, .3f, 1, 14)},\
                 #NAME,\
                 1,\
                 { &this->data->NAME },\
                 NULL)
 
-#define MAKETDS(NAME, MXPORT, ENABLEPIN) new SensorHolder(\
-                new ConductivitySensor(&Wire, i2cMultiplexer2, MXPORT, ENABLEPIN),\
+#define MAKETDS(NAME, ENABLEPIN) new SensorHolder(\
+                new ConductivitySensor(&Wire, ENABLEPIN),\
                 {new ReadingNormalizer(#NAME, 10, 3, .5f, 1, 2000)},\
                 #NAME,\
                 1,\
@@ -97,16 +97,7 @@ class Sensorama {
         OneWire* oneWire = new OneWire(ONEWIRE_PIN);
         DallasTemperature* dallasTemp = new DallasTemperature(oneWire);        
 
-        static bool millisElapsed(unsigned long ms) {
-            if (ms <= millis()) {
-            return true;
-            }
-            //todo: need to make sure this handles the 52 day wrap here or things will break
-            if (abs(ms - millis()) > 10000000) {
-            return true;
-            }
-            return false;
-        }
+        
     public:
         Sensorama(I2CMultiplexer* i2cPlexer,I2CMultiplexer* i2cPlexer2, GrowbotData* growbotData, GrowbotConfig* growbotConfig, std::function<void()> importantTicksCallback) {
             this->i2cMultiplexer = i2cPlexer;
