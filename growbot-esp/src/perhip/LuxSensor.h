@@ -24,7 +24,7 @@ class Max44009Sensor : public LuxSensor {
         Max44009 myLux = Max44009(LUX_SENSOR_ADDR, Max44009::Boolean::False);
         bool isOk;
         I2CMultiplexer* plexer;
-        byte busNum;
+        int busNum;
         bool isMultiplexer;
         void doPlex() {
             if (this->isMultiplexer) {
@@ -32,7 +32,7 @@ class Max44009Sensor : public LuxSensor {
             }
         }
     public: 
-        Max44009Sensor(TwoWire* wire, I2CMultiplexer* multiplexer, byte multiplexer_bus) {
+        Max44009Sensor(TwoWire* wire, I2CMultiplexer* multiplexer, int multiplexer_bus) {
             this->_wire = wire;
             this->isMultiplexer = true;
             this->plexer = multiplexer;

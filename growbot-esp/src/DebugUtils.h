@@ -2,10 +2,11 @@
 #include <stdarg.h>
 #include <Print.h>
 #include <Wire.h>
-#include <OneWire.h>
+//#include <OneWire.h>
 #include <DallasTemperature.h>
 #include <stdarg.h>
-#include "perhip/I2CMultiplexer.h"
+
+
 
 #ifndef DEBUGUTILS_H
 #define DEBUGUTILS_H
@@ -18,25 +19,20 @@ class SerialPrint : public Print {
         
         size_t write(const uint8_t *buffer, size_t size)
         {
-          return size;
             //sendto(_sock,buffer, size, 0, (const struct sockaddr*) &_send_addr, sizeof(_send_addr));
             return Serial.write((const char*)buffer, size);
         }
-        size_t write(uint8_t) {
-            return 1;
+        size_t write(uint8_t a) {
+          return write(&a, 1);
         }
 
         void printf(const char *format, ...)
         {
-          return;
           char buf[PRINTF_BUF];
           va_list ap;
           va_start(ap, format);
-          vsnprintf(buf, sizeof(buf), format, ap);
-          for(char *p = &buf[0]; *p; p++) 
-          {
-            write(*p);
-          }
+          int len = vsnprintf(buf, sizeof(buf), format, ap);
+          write((const uint8_t*)buf, len );
           va_end(ap);
         }
 };
@@ -109,68 +105,28 @@ void printHex(uint8_t num) {
   sprintf(hexCar, "%02X", num);
   dbg.print(hexCar);
 }
-void debug_find_onewire_sensors(OneWire oneWire) {
-  oneWire.reset_search();
-  DeviceAddress addr;
-  while (oneWire.search(addr)) {
-    dbg.print("Onewire device found, address: ");
-    for (byte i = 0; i < 8; i++) {
-      dbg.print("0x");
-      printHex(addr[i]);
-      dbg.print(", ");
-    }
-    dbg.println("");
-  }
-} 
+// void debug_find_onewire_sensors(OneWire oneWire) {
+//   oneWire.reset_search();
+//   DeviceAddress addr;
+//   while (oneWire.search(addr)) {
+//     dbg.print("Onewire device found, address: ");
+//     for (byte i = 0; i < 8; i++) {
+//       dbg.print("0x");
+//       printHex(addr[i]);
+//       dbg.print(", ");
+//     }
+//     dbg.println("");
+//   }
+// } 
 
-void debug_scan_i2c(TwoWire &wire, byte portnum = 0, byte busnum = 0) {
-  byte error, address; //variable for error and I2C address
-  int nDevices;
 
-  dbg.printf("Scanning port %d bus %d...\n", portnum, busnum);
-
-  nDevices = 0;
-  for (address = 1; address < 127; address++ )
-  {
-    // The i2c_scanner uses the return value of
-    // the Write.endTransmisstion to see if
-    // a device did acknowledge to the address.
-    wire.beginTransmission(address);
-    error = wire.endTransmission();
-    byte printaddr;
-    if (address < 16) {
-      printaddr =  0;
-     } else {
-       printaddr = address;
-     }
-    if (error == 0)
-    {
-      
-      dbg.printf("I2C device found port %d bus %d at address %x\n", portnum, busnum, printaddr);
-      // if (address < 16)
-      //   dbg.print("0");
-      // dbg.print(address, HEX);
-      // dbg.println("  !");
-      nDevices++;
-    }
-    else if (error == 4)
-    {
-      dbg.printf("Unknown error port %d bus %d at address %x\n", portnum, busnum, printaddr);
-    }
-  }
-  if (nDevices == 0)
-    dbg.printf("No I2C devices found port %d bus %d\n", portnum, busnum);
-  else
-    dbg.printf("done\n");
-}
-
-void debug_find_i2c(byte port, I2CMultiplexer &plexer) {
-  for (int i = 0; i < 8; i++) {
-    dbg.printf("Selecting bus %d...\n", i);
-    plexer.setBus(i);
-    debug_scan_i2c(Wire, port, i);
-  }
-}
+// void debug_find_i2c(byte port, I2CMultiplexer &plexer) {
+//   for (int i = 0; i < 8; i++) {
+//     dbg.printf("Selecting bus %d...\n", i);
+//     plexer.setBus(i);
+//     debug_scan_i2c(Wire, port, i);
+//   }
+// }
 static bool millisElapsed(unsigned long ms) {
             if (ms <= millis()) {
             return true;

@@ -4,7 +4,7 @@
 #define PHSENSOR_H
 class PhSensor : public EzoSensor {
     public:
-        PhSensor(TwoWire* wire, I2CMultiplexer* multiplexer, byte multiplexer_bus, byte enablePin) : EzoSensor::EzoSensor(wire, multiplexer, multiplexer_bus, "PH", 0x63, enablePin) {
+        PhSensor(TwoWire* wire, I2CMultiplexer* multiplexer, int multiplexer_bus, byte enablePin) : EzoSensor::EzoSensor(wire, multiplexer, multiplexer_bus, "PH", 0x63, enablePin) {
         }
         PhSensor(TwoWire* wire, byte enablePin) : EzoSensor::EzoSensor(wire, "PH", 0x63, enablePin) {
         }

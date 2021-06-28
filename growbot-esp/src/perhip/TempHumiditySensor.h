@@ -10,6 +10,8 @@
 #define TEMP_HUM_SENSOR_H
 #define SEALEVELPRESSURE_HPA (1013.25)
 #define MAX_READ_FAIL_SKIP 4
+#define BME_I2C_ADDR 0x76
+
 
 class TempHumiditySensor : public SensorBase {
     public:
@@ -23,7 +25,7 @@ class BME280Sensor : public TempHumiditySensor {
         TwoWire* _wire;
         bool isOk;
         I2CMultiplexer* plexer;
-        byte busNum;
+        int busNum;
         bool isMultiplexer;
         int tempReadFailCount = 0;
         int humidReadFailCount = 0;
@@ -33,7 +35,7 @@ class BME280Sensor : public TempHumiditySensor {
             }
         } 
     public:
-        BME280Sensor(TwoWire* wire, I2CMultiplexer* multiplexer, byte multiplexer_bus) {
+        BME280Sensor(TwoWire* wire, I2CMultiplexer* multiplexer, int multiplexer_bus) {
             this->_wire = wire;
             this->isMultiplexer = true;
             this->plexer = multiplexer;
@@ -45,7 +47,7 @@ class BME280Sensor : public TempHumiditySensor {
         }
         void init() {
             doPlex();
-            this->isOk = (this->bme.begin(0x76, this->_wire) != 0);
+            this->isOk = (this->bme.begin(BME_I2C_ADDR, this->_wire) != 0);
             if (!this->isOk) {
                 dbg.println("bme not ok");
             }
@@ -142,7 +144,7 @@ class SHTC3Sensor : public TempHumiditySensor {
         SHTC3 mySHTC3;
         bool isOk;
         I2CMultiplexer* plexer;
-        byte busNum;
+        int busNum;
         bool isMultiplexer;
         int readFailCount = 0;
         void doPlex() {
@@ -151,7 +153,7 @@ class SHTC3Sensor : public TempHumiditySensor {
             }
         }
     public:
-        SHTC3Sensor(TwoWire* wire, I2CMultiplexer* multiplexer, byte multiplexer_bus) {
+        SHTC3Sensor(TwoWire* wire, I2CMultiplexer* multiplexer, int multiplexer_bus) {
             this->_wire = wire;
             this->isMultiplexer = true;
             this->plexer = multiplexer;

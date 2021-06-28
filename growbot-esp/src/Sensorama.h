@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include <DallasTemperature.h>
+
 #include "SensorBase.h"
 #include "ReadingNormalizer.h"
 #include "GrowbotData.h"
@@ -15,9 +15,9 @@
 #ifndef SENSORAMA_H
 #define SENSORAMA_H
 #define MAX_READ_TIME_MS 5000
-
+#define I2COBJ this->wire
 #define MAKELUX(NAME, MXPORT) new SensorHolder(\
-                new Max44009Sensor(&Wire, i2cMultiplexer, MXPORT),\
+                new Max44009Sensor(I2COBJ, i2cMultiplexer, MXPORT),\
                 { new ReadingNormalizer(#NAME, 10, 3, .5f, 0, 100000) },\
                 #NAME,\
                 1,\
@@ -26,7 +26,7 @@
             
 
 #define MAKETEMPHUMID(NAME, TYPE, MXPORT) new SensorHolder(\
-                new TYPE(&Wire, i2cMultiplexer, MXPORT),\
+                new TYPE(I2COBJ, i2cMultiplexer, MXPORT),\
                 { new ReadingNormalizer(#NAME ".temperatureC", 10, 3, .5f, 0, 70),\
                   new ReadingNormalizer(#NAME ".humidity", 10, 3, .5f, 1, 100) },\
                 #NAME,\
@@ -36,7 +36,7 @@
             
 
 #define MAKEWATERLEVEL(NAME, MXPORT, CONFIGPROP) new SensorHolder(\
-                new WaterLevel(&Wire, i2cMultiplexer, MXPORT),\
+                new WaterLevel(I2COBJ, i2cMultiplexer, MXPORT),\
                 {new ReadingNormalizer(#NAME, 10, 3, .5f, 0, 70)},\
                 #NAME,\
                 1,\
@@ -44,23 +44,23 @@
                 &this->config->CONFIGPROP)
 
 #define MAKEWATERTEMP(NAME, TYPE, ADDR) new SensorHolder(\
-                new TYPE(this->dallasTemp, ADDR), \
+                new TYPE(ADDR), \
                 {new ReadingNormalizer(#NAME, 10, 3, .5f, 0, 70)},\
                 #NAME,\
                 1,\
                 { &this->data->NAME },\
                 NULL)
 
-#define MAKEPH(NAME, ENABLEPIN) new SensorHolder(\
-                new PhSensor(&Wire, ENABLEPIN),\
+#define MAKEPH(NAME, ENABLEPIN, MXPORT) new SensorHolder(\
+                new PhSensor(I2COBJ, this->i2cMultiplexer, MXPORT, ENABLEPIN),\
                 {new ReadingNormalizer(#NAME, 10, 3, .3f, 1, 14)},\
                 #NAME,\
                 1,\
                 { &this->data->NAME },\
                 NULL)
 
-#define MAKETDS(NAME, ENABLEPIN) new SensorHolder(\
-                new ConductivitySensor(&Wire, ENABLEPIN),\
+#define MAKETDS(NAME, ENABLEPIN, MXPORT) new SensorHolder(\
+                new ConductivitySensor(I2COBJ, this->i2cMultiplexer, MXPORT, ENABLEPIN),\
                 {new ReadingNormalizer(#NAME, 10, 3, .5f, 1, 2000)},\
                 #NAME,\
                 1,\
@@ -93,43 +93,42 @@ class Sensorama {
         GrowbotConfig* config;
         std::vector<SensorHolder*> sensors;
         I2CMultiplexer* i2cMultiplexer;
-        I2CMultiplexer* i2cMultiplexer2;
         OneWire* oneWire = new OneWire(ONEWIRE_PIN);
         DallasTemperature* dallasTemp = new DallasTemperature(oneWire);        
-
+        TwoWire* wire;
         
     public:
-        Sensorama(I2CMultiplexer* i2cPlexer,I2CMultiplexer* i2cPlexer2, GrowbotData* growbotData, GrowbotConfig* growbotConfig, std::function<void()> importantTicksCallback) {
+        Sensorama(TwoWire* wire, I2CMultiplexer* i2cPlexer, GrowbotData* growbotData, GrowbotConfig* growbotConfig, std::function<void()> importantTicksCallback) {
+            this->wire = wire;
             this->i2cMultiplexer = i2cPlexer;
-            this->i2cMultiplexer2 = i2cPlexer2;
             this->data = growbotData;    
             this->config = growbotConfig;
             this->importantTicks = importantTicksCallback;            
         }
         void init() {
             //water quality sensors
-           // this->sensors.push_back(MAKEPH(waterData.ph, 0, PH_ENABLE_PIN));
-           // this->sensors.push_back(MAKETDS(waterData.tds, 0, TDS_ENABLE_PIN));
+           this->sensors.push_back(MAKEPH(waterData.ph, PH_ENABLE_PIN, PH_SENSOR_MX_PORT));
+           this->sensors.push_back(MAKETDS(waterData.tds, TDS_ENABLE_PIN, TDS_SENSOR_MX_PORT));
 
-            //control bucket sensors
-           // this->sensors.push_back(MAKEWATERTEMP(controlBucket.temperatureC, DallasWaterTempSensor, WT_CONTROL_BUCKET_ADDRESS));
-           // this->sensors.push_back(MAKEWATERLEVEL(controlBucket.waterLevelPercent, 1, controlWaterLevelCalibration));
+           //control bucket sensors
+           this->sensors.push_back(MAKEWATERTEMP(controlBucket.temperatureC, DallasWaterTempSensor, WT_CONTROL_BUCKET_ADDRESS));
+           this->sensors.push_back(MAKEWATERLEVEL(controlBucket.waterLevelPercent, CONTROL_WATER_LEVEL_MX_PORT, controlWaterLevelCalibration));
 
-            //light sensors
-            this->sensors.push_back(MAKELUX(luxAmbient1, 7));
-           // this->sensors.push_back(MAKELUX(luxAmbient2, 1));
-           // this->sensors.push_back(MAKELUX(luxAmbient3, 4));
-           // this->sensors.push_back(MAKELUX(luxAmbient4, 5));
+           //light sensors
+           this->sensors.push_back(MAKELUX(luxAmbient1, 15));
+           this->sensors.push_back(MAKELUX(luxAmbient2, 1));
+           this->sensors.push_back(MAKELUX(luxAmbient3, 4));
+           this->sensors.push_back(MAKELUX(luxAmbient4, 5));
 
-            //temperature/humidity sensors
-            this->sensors.push_back(MAKETEMPHUMID(exhaustInternal, BME280Sensor, 7));
-          //  this->sensors.push_back(MAKETEMPHUMID(intakeInternal, BME280Sensor, 1));
-           // this->sensors.push_back(MAKETEMPHUMID(intakeExternal, SHTC3Sensor, 2));
-           // this->sensors.push_back(MAKETEMPHUMID(exhaustExternal, SHTC3Sensor, 3));            
-          //  this->sensors.push_back(MAKETEMPHUMID(ambientInternal1, BME280Sensor, 4));
-          //  this->sensors.push_back(MAKETEMPHUMID(ambientInternal2, BME280Sensor, 5));
-          //  this->sensors.push_back(MAKETEMPHUMID(ambientInternal3, BME280Sensor, 6));
-           // this->sensors.push_back(MAKETEMPHUMID(lights, SHTC3Sensor, 7));
+           //temperature/humidity sensors
+           this->sensors.push_back(MAKETEMPHUMID(exhaustInternal, BME280Sensor, 15));
+           this->sensors.push_back(MAKETEMPHUMID(intakeInternal, BME280Sensor, 8));
+           this->sensors.push_back(MAKETEMPHUMID(intakeExternal, SHTC3Sensor, 9));
+           this->sensors.push_back(MAKETEMPHUMID(exhaustExternal, SHTC3Sensor, 10));            
+           this->sensors.push_back(MAKETEMPHUMID(ambientInternal1, BME280Sensor, 11));
+           this->sensors.push_back(MAKETEMPHUMID(ambientInternal2, BME280Sensor, 12));
+           this->sensors.push_back(MAKETEMPHUMID(ambientInternal3, BME280Sensor, 13));
+           this->sensors.push_back(MAKETEMPHUMID(lights, SHTC3Sensor, 14));
             configChanged();
             for (auto sensor : this->sensors) sensor->sensor->init();
         }

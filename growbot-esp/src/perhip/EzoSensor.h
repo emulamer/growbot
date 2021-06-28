@@ -20,7 +20,7 @@ class EzoSensor : public SensorBase {
         const char* name;
         bool isOk;
         I2CMultiplexer* plexer;
-        byte busNum;
+        int busNum;
         float waterTempC;
         bool isMultiplexer;
         char* buffer;
@@ -32,6 +32,7 @@ class EzoSensor : public SensorBase {
         } 
         bool recCheck() {
             this->doPlex();
+            memset(this->buffer, 0, EZO_BUFFER_LEN);
             auto status = board->receive_cmd(this->buffer, EZO_BUFFER_LEN);
             if (status == Ezo_board::errors::SUCCESS) {
                 return true;
@@ -49,6 +50,7 @@ class EzoSensor : public SensorBase {
             }
             for (byte i = 0; i < 3; i++) {
                 this->doPlex();
+                memset(this->buffer, 0, EZO_BUFFER_LEN);
                 snprintf(this->buffer, EZO_BUFFER_LEN, "RT,%f", this->waterTempC);
                 this->board->send_cmd(this->buffer);
                 delay(900);
@@ -69,6 +71,7 @@ class EzoSensor : public SensorBase {
             
             bool success = false;
             for (byte i = 0; i < 15; i++) {
+                memset(this->buffer, 0, EZO_BUFFER_LEN);
                 if (point == EZO_CALIBRATE_DRY) {
                     snprintf(this->buffer, EZO_BUFFER_LEN, "cal,dry");
                 } else {
@@ -88,7 +91,7 @@ class EzoSensor : public SensorBase {
         }
         
     public:
-        EzoSensor(TwoWire* wire, I2CMultiplexer* multiplexer, byte multiplexer_bus, const char* boardName, int boardAddress, byte enablePin) {
+        EzoSensor(TwoWire* wire, I2CMultiplexer* multiplexer, int multiplexer_bus, const char* boardName, int boardAddress, byte enablePin) {
             this->name = boardName;
             this->enPin = enablePin;
             this->board = new Ezo_board(boardAddress, wire);
@@ -140,6 +143,7 @@ class EzoSensor : public SensorBase {
             reading.isSuccessful = false;
             reading.values[0] = NAN;
             reading.deferUntil = millis() + 1000;
+            memset(this->buffer, 0, EZO_BUFFER_LEN);
             snprintf(this->buffer, EZO_BUFFER_LEN, "RT,%f", this->waterTempC);
             this->doPlex();
             this->board->send_cmd(this->buffer);

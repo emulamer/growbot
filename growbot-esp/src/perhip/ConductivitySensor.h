@@ -6,7 +6,7 @@
 #define CONDUCTIVITYSENSOR_H
 class ConductivitySensor : public EzoSensor {
      public:
-        ConductivitySensor(TwoWire* wire, I2CMultiplexer* multiplexer, byte multiplexer_bus, byte enablePin) : EzoSensor::EzoSensor(wire, multiplexer, multiplexer_bus, "EC", 0x64, enablePin){
+        ConductivitySensor(TwoWire* wire, I2CMultiplexer* multiplexer, int multiplexer_bus, byte enablePin) : EzoSensor::EzoSensor(wire, multiplexer, multiplexer_bus, "EC", 0x64, enablePin){
         }
         ConductivitySensor(TwoWire* wire, byte enablePin) : EzoSensor::EzoSensor(wire, "EC", 0x64, enablePin){
         }

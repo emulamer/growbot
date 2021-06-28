@@ -23,7 +23,7 @@ class WaterLevel : public SensorBase
         int m_emptyCm, m_fullCm;
         int m_range;
         I2CMultiplexer* plexer;
-        byte busNum;
+        int busNum;
         bool isMultiplexer;
         void doPlex() {
             if (this->isMultiplexer) {
@@ -39,7 +39,7 @@ class WaterLevel : public SensorBase
             this->_wire->write(1);
             this->_wire->endTransmission();
             delay(120);
-            this->_wire->requestFrom(0x57, 3);
+            this->_wire->requestFrom(ULTRASONIC_I2C_ADDR, 3);
             int i = 0;
             while (this->_wire->available()) {
                 distBytes[i++] = this->_wire->read();
@@ -83,7 +83,7 @@ class WaterLevel : public SensorBase
             this->isMultiplexer = false;
             this->setCalibration(calibration);
         }
-        WaterLevel(TwoWire* wire, I2CMultiplexer* multiplexer, byte multiplexer_bus) {
+        WaterLevel(TwoWire* wire, I2CMultiplexer* multiplexer, int multiplexer_bus) {
             this->_wire = wire;
             this->m_fullCm = 1;
             this->m_emptyCm = 100;
@@ -92,7 +92,7 @@ class WaterLevel : public SensorBase
             this->plexer = multiplexer;
             this->busNum = multiplexer_bus; 
         }
-        WaterLevel(TwoWire* wire, I2CMultiplexer* multiplexer, byte multiplexer_bus, WaterLevelCalibration calibration) {
+        WaterLevel(TwoWire* wire, I2CMultiplexer* multiplexer, int multiplexer_bus, WaterLevelCalibration calibration) {
             this->setCalibration(calibration);
             this->isMultiplexer = true;
             this->plexer = multiplexer;

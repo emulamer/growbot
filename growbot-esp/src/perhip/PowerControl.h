@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <Wire.h>
+#include "I2CMultiplexer.h"
 #include "../GrowbotData.h"
 #include "../DebugUtils.h"
 #ifndef POWERCONTROL_H
@@ -19,7 +20,7 @@ const byte levelMap[] = {
 class PowerControl {
     private:
         I2CMultiplexer* plexer;
-        byte busNum;
+        int busNum;
         bool isMultiplexer;
         TwoWire* _wire;
         bool toggledOn[4];
@@ -122,32 +123,22 @@ class PowerControl {
             doingSomething = false;
         }
     public:
-        PowerControl(TwoWire* wire, I2CMultiplexer* multiplexer, byte multiplexer_bus, byte address) {
+        PowerControl(TwoWire* wire, I2CMultiplexer* multiplexer, int multiplexer_bus, byte address) {
             this->plexer = multiplexer;
             this->busNum = multiplexer_bus;
             this->isMultiplexer = true;
             this->_wire = wire;
             this->m_address = address;
             this->timerRunning = false;
-            for (byte i = 0; i < 4; i++) {
-                this->m_calibrations[i].maxOffset = 31;
-                this->m_calibrations[i].minOffset = 1;
-                this->m_calibrations[i].spinUpSec = 0;
-                this->m_targetIdx[i] = 0;            
-                this->m_channelLevel[i] = 0;
-                this->toggledOn[i] = true;
-                this->setChannelIdxDirect(i, 32);
-                if (this->m_calibrations[i].spinUpSec > 0) {
-                    this->spinUpEndStamp[i] = millis() + (unsigned long)(this->m_calibrations[i].spinUpSec * 1000);
-                    this->timerRunning = true;
-                }
-            }            
         }
         PowerControl(TwoWire* wire, byte address) {
             this->isMultiplexer = false;
             this->_wire = wire;
             this->m_address = address;
             this->timerRunning = false;
+                     
+        }
+        void init() {
             for (byte i = 0; i < 4; i++) {
                 this->m_calibrations[i].maxOffset = 31;
                 this->m_calibrations[i].minOffset = 1;
@@ -160,7 +151,7 @@ class PowerControl {
                     this->spinUpEndStamp[i] = millis() + (unsigned long)(this->m_calibrations[i].spinUpSec * 1000);
                     this->timerRunning = true;
                 }
-            }            
+            }   
         }
         void handle() {
             if (!this->timerRunning) {

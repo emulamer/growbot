@@ -1,8 +1,6 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include "GrowbotData.h"
-#include <OneWire.h>
-#include <DallasTemperature.h>
 #include "DataConnection.h"
 #include "Config.h" //all the config stuff is in here
 #include "DebugUtils.h"
@@ -60,18 +58,63 @@ GrowbotConfig config;
 GrowbotData data;
 GrowbotState state;
 //i2c stuff
-I2CMultiplexer i2cMultiplexer(&Wire, I2C_MULTIPLEXER_ADDRESS);
-I2CMultiplexer i2cMultiplexer2(&Wire, I2C_MULTIPLEXER_ADDRESS);
-PowerControl powerCtl(&Wire, &i2cMultiplexer2, POWER_MX_PORT, I2C_POWER_CTL_ADDR);
+TwoWire* i2cBus = new TwoWire((int)I2C_SDA_PIN, (int)I2C_SCL_PIN);
+I2CMultiplexer i2cMultiplexer(i2cBus, I2C_MULTIPLEXER_ADDRESS, I2C_MULTIPLEXER2_ADDRESS);
+PowerControl powerCtl(i2cBus, &i2cMultiplexer, POWER_MX_PORT, I2C_POWER_CTL_ADDR);
 
 void doImportantTicks() {
   #if ARDUINO_ARCH_ESP32
   ArduinoOTA.handle();
   #endif
   powerCtl.handle();
+  dataConn.handle();
 }
 
-Sensorama sensorama = Sensorama(&i2cMultiplexer, &i2cMultiplexer2, &data, &config, doImportantTicks);
+void debug_scan_i2c(TwoWire *wire, I2CMultiplexer* plex) {
+  byte error, address; //variable for error and I2C address
+  int nDevices;
+
+  for (int i = 0; i < 16; i++) {
+    int port = i;
+        //  dbg.printf("port in %d\n", port);
+    nDevices = 0;
+    for (address = 1; address < 127; address++ )
+    {
+
+      plex->setBus(port);
+      // The i2c_scanner uses the return value of
+      // the Write.endTransmisstion to see if
+      // a device did acknowledge to the address.
+      wire->beginTransmission(address);
+      error = wire->endTransmission();
+      byte printaddr;
+      if (address < 16) {
+        printaddr =  0;
+      } else {
+        printaddr = address;
+      }
+      if (error == 0)
+      {
+        
+        dbg.printf("I2C device found port %d at address %x\n", i, printaddr);
+        // if (address < 16)
+        //   dbg.print("0");
+        // dbg.print(address, HEX);
+        // dbg.println("  !");
+        nDevices++;
+      }
+      else if (error == 4)
+      {
+        dbg.printf("Unknown error port %d at address %x\n", i, printaddr);
+      }
+    }
+  }
+  if (nDevices == 0)
+    dbg.printf("No I2C devices found \n");
+  else
+    dbg.printf("done\n");
+}
+Sensorama sensorama = Sensorama(i2cBus, &i2cMultiplexer, &data, &config, doImportantTicks);
 
 int operating_mode = GROWBOT_MODE_NORMAL;
 
@@ -290,17 +333,15 @@ void setupIO() {
 #elif defined(PICO_SDK_VERSION_MAJOR)
 void setupIO() {
   //stupid garbage implementation of Wire.h, can't even change the pins
-  Wire.begin();
-  Wire.setClock(I2C_FREQ);
+  i2cBus->setClock(I2C_FREQ);
+  i2cBus->begin();  
 }
 #endif
 void setup() {  
   Serial.begin(115200);
-  pinMode(LED_BUILTIN, OUTPUT);
-  digitalWrite(LED_BUILTIN, HIGH);
-  delay(5000);
   dbg.println("Growbot v.01 starting up...");
   setupIO();
+  powerCtl.init();
   dbg.print("Loading config...");
   nvStore.readConfig(&config);
   updateFromConfig();
@@ -308,7 +349,6 @@ void setup() {
 
   dbg.print("Sensors...");
   sensorama.init();
-  //initSensors();
   dbg.println("initialized.");
 
   dbg.print("Starting data connection...");
@@ -316,7 +356,9 @@ void setup() {
   dataConn.onNewConfig(onNewConfig);
   dataConn.init();
   dbg.println("started.");
-//  Serial2.begin(9600);
+
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, HIGH);
 }
 unsigned long nextTick = 0;
 bool tickNow() {
@@ -331,18 +373,12 @@ bool tickNow() {
 
 
 void loop() {
-  return;
+//debug_scan_i2c(i2cBus, &i2cMultiplexer);
   doImportantTicks();
-      // dbg.printf("Scanning port 0\n");
-      // debug_find_i2c(0, i2cMultiplexer);
-      // dbg.printf("Scanning port 1\n");
-      // debug_find_i2c(1, i2cMultiplexer2);
   if (operating_mode == GROWBOT_MODE_NORMAL) {
     if (tickNow()) {
-      //readAllSensors();
 
       sensorama.update();
-      //doCrazyStuff();
 
       sendState();
       dbg.printf("Waiting to sample again for %d\n", config.samplingIntervalMS);
@@ -360,7 +396,6 @@ void loop() {
              operating_mode == GROWBOT_MODE_CALIBRATING_TDS_SENSOR_SET_LOW ||
              operating_mode == GROWBOT_MODE_CALIBRATING_TDS_SENSOR_SET_HIGH ) {
     sensorama.updateOne("waterData.tds");
-    //readWaterQualitySensors(false, true);
     sendState();
     delay(2000);
   }
