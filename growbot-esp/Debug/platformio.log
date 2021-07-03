@@ -1,0 +1,907 @@
+﻿  Processing pico (platform: raspberrypi; board: pico; framework: arduino)
+  --------------------------------------------------------------------------------
+  Verbose mode can be enabled via `-v, --verbose` option
+  CONFIGURATION: https://docs.platformio.org/page/boards/raspberrypi/pico.html
+  PLATFORM: Raspberry Pi RP2040 (1.1.0+sha.3c6cc84) > Raspberry Pi Pico
+  HARDWARE: RP2040 133MHz, 264KB RAM, 2MB Flash
+  DEBUG: Current (cmsis-dap) External (cmsis-dap, jlink, raspberrypi-swd)
+  PACKAGES: 
+   - framework-arduino-mbed 2.1.0 
+   - tool-rp2040tools 1.0.2 
+   - toolchain-gccarmnoneeabi 1.90201.191206 (9.2.1)
+  LDF: Library Dependency Finder -> http://bit.ly/configure-pio-ldf
+  LDF Modes: Finder ~ chain, Compatibility ~ soft
+  Found 37 compatible libraries
+  Scanning dependencies...
+  Dependency Graph
+  |-- <Ultrasonic> 3.0.0
+  |-- <DallasTemperature> 3.9.1
+  |   |-- <OneWire> 2.3.5
+  |-- <Adafruit Unified Sensor> 1.1.4
+  |-- <SparkFun SHTC3 Humidity and Temperature Sensor Library> 1.1.3
+  |   |-- <Wire>
+  |-- <Adafruit BME280 Library> 2.1.4
+  |   |-- <Adafruit Unified Sensor> 1.1.4
+  |   |-- <SPI>
+  |   |-- <Wire>
+  |-- <Max44009> 0.5.0
+  |   |-- <Wire>
+  |-- <EZO I2C Sensors> 1.0.0+32e1eda
+  |   |-- <Wire>
+  |-- <Adafruit BusIO> 1.8.1
+  |   |-- <Wire>
+  |   |-- <SPI>
+  |-- <Wire>
+  Building in release mode
+  Compiling .pio\build\pico\src\libs\one_wire.cpp.o
+  Compiling .pio\build\pico\src\main.cpp.o
+  Compiling .pio\build\pico\lib7bd\Ultrasonic\Ultrasonic.cpp.o
+  Compiling .pio\build\pico\libc64\OneWire\OneWire.cpp.o
+  Compiling .pio\build\pico\libff3\DallasTemperature\DallasTemperature.cpp.o
+  Compiling .pio\build\pico\lib602\Adafruit Unified Sensor\Adafruit_Sensor.cpp.o
+  Compiling .pio\build\pico\lib3dd\Wire\Wire.cpp.o
+  Compiling .pio\build\pico\libd57\SparkFun SHTC3 Humidity and Temperature Sensor Library\SparkFun_SHTC3.cpp.o
+  Compiling .pio\build\pico\lib7c9\SPI\SPI.cpp.o
+  Compiling .pio\build\pico\lib495\Adafruit BME280 Library\Adafruit_BME280.cpp.o
+  Compiling .pio\build\pico\lib300\Max44009\Max44009.cpp.o
+  Compiling .pio\build\pico\lib9e9\EZO I2C Sensors\Ezo_i2c.cpp.o
+  Compiling .pio\build\pico\libc1d\Adafruit BusIO\Adafruit_BusIO_Register.cpp.o
+  Compiling .pio\build\pico\libc1d\Adafruit BusIO\Adafruit_I2CDevice.cpp.o
+  Compiling .pio\build\pico\libc1d\Adafruit BusIO\Adafruit_SPIDevice.cpp.o
+  Compiling .pio\build\pico\FrameworkArduinoVariant\double_tap_usb_boot.cpp.o
+  Compiling .pio\build\pico\FrameworkArduinoVariant\variant.cpp.o
+  Compiling .pio\build\pico\FrameworkArduino\Interrupts.cpp.o
+  Compiling .pio\build\pico\FrameworkArduino\Serial.cpp.o
+  Compiling .pio\build\pico\FrameworkArduino\Tone.cpp.o
+  Compiling .pio\build\pico\FrameworkArduino\USB\PluggableUSBDevice.cpp.o
+  Compiling .pio\build\pico\FrameworkArduino\USB\USBCDC.cpp.o
+  Compiling .pio\build\pico\FrameworkArduino\USB\USBSerial.cpp.o
+  Compiling .pio\build\pico\FrameworkArduino\WMath.cpp.o
+  Compiling .pio\build\pico\FrameworkArduino\abi.cpp.o
+  Compiling .pio\build\pico\FrameworkArduino\api\Common.cpp.o
+  Compiling .pio\build\pico\FrameworkArduino\api\IPAddress.cpp.o
+  Compiling .pio\build\pico\FrameworkArduino\api\PluggableUSB.cpp.o
+  Compiling .pio\build\pico\FrameworkArduino\api\Print.cpp.o
+  Compiling .pio\build\pico\FrameworkArduino\api\Stream.cpp.o
+  Compiling .pio\build\pico\FrameworkArduino\api\String.cpp.o
+  Compiling .pio\build\pico\FrameworkArduino\arm_hal_random.c.o
+  Compiling .pio\build\pico\FrameworkArduino\itoa.c.o
+  Compiling .pio\build\pico\FrameworkArduino\main.cpp.o
+  Compiling .pio\build\pico\FrameworkArduino\mbed\platform\cxxsupport\mstd_mutex.cpp.o
+  Compiling .pio\build\pico\FrameworkArduino\pinToIndex.cpp.o
+  Compiling .pio\build\pico\FrameworkArduino\wiring.cpp.o
+  Compiling .pio\build\pico\FrameworkArduino\wiring_analog.cpp.o
+  Compiling .pio\build\pico\FrameworkArduino\wiring_digital.cpp.o
+  Compiling .pio\build\pico\FrameworkArduino\wiring_pulse.cpp.o
+  Compiling .pio\build\pico\FrameworkArduino\wiring_shift.cpp.o
+  In file included from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_regs/include/hardware/platform_defs.h:12,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/pico_platform/include/pico/platform.h:12,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/common/pico_base/include/pico.h:19,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_gpio/include/hardware/gpio.h:10,
+                   from src\libs\one_wire.h:41,
+                   from src\libs\one_wire.cpp:1:
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_timer/include/hardware/timer.h: In function 'uint32_t time_us_32()':
+C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_regs/include/hardware/regs/addressmap.h(56,20): warning GCB925CEF: type qualifiers ignored on cast result type [-Wignored-qualifiers]
+     56 | #define TIMER_BASE 0x40054000
+        |                    ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_structs/include/hardware/structs/timer.h:33:38: note: in expansion of macro 'TIMER_BASE'
+     33 | #define timer_hw ((timer_hw_t *const)TIMER_BASE)
+        |                                      ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_timer/include/hardware/timer.h:66:12: note: in expansion of macro 'timer_hw'
+     66 |     return timer_hw->timerawl;
+        |            ^~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_timer/include/hardware/timer.h: In function 'bool time_reached(absolute_time_t)':
+C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_regs/include/hardware/regs/addressmap.h(56,20): warning GCB925CEF: type qualifiers ignored on cast result type [-Wignored-qualifiers]
+     56 | #define TIMER_BASE 0x40054000
+        |                    ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_structs/include/hardware/structs/timer.h:33:38: note: in expansion of macro 'TIMER_BASE'
+     33 | #define timer_hw ((timer_hw_t *const)TIMER_BASE)
+        |                                      ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_timer/include/hardware/timer.h:110:19: note: in expansion of macro 'timer_hw'
+    110 |     uint32_t hi = timer_hw->timerawh;
+        |                   ^~~~~~~~
+C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_regs/include/hardware/regs/addressmap.h(56,20): warning GCB925CEF: type qualifiers ignored on cast result type [-Wignored-qualifiers]
+     56 | #define TIMER_BASE 0x40054000
+        |                    ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_structs/include/hardware/structs/timer.h:33:38: note: in expansion of macro 'TIMER_BASE'
+     33 | #define timer_hw ((timer_hw_t *const)TIMER_BASE)
+        |                                      ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_timer/include/hardware/timer.h:111:33: note: in expansion of macro 'timer_hw'
+    111 |     return (hi >= hi_target && (timer_hw->timerawl >= (uint32_t) target || hi != hi_target));
+        |                                 ^~~~~~~~
+  In file included from src\libs\one_wire.cpp:1:
+  src\libs\one_wire.h: In constructor 'One_wire::One_wire(uint, uint, bool)':
+src\libs\one_wire.h(181,7): warning G0110A019: 'One_wire::_power_polarity' will be initialized after [-Wreorder]
+    181 |  bool _power_polarity;
+        |       ^~~~~~~~~~~~~~~
+src\libs\one_wire.h(180,7): warning G5D8FEED1: 'bool One_wire::_power_mosfet' [-Wreorder]
+    180 |  bool _power_mosfet;
+        |       ^~~~~~~~~~~~~
+src\libs\one_wire.cpp(20,1): warning G9B100CBB: when initialized here [-Wreorder]
+     20 | One_wire::One_wire(uint data_pin, uint power_pin, bool power_polarity)
+        | ^~~~~~~~
+  In file included from .pio\libdeps\pico\OneWire\OneWire.cpp:144:
+.pio\libdeps\pico\OneWire\util/OneWire_direct_gpio.h(416,2): warning G68FF2C7B: #warning "OneWire. Fallback mode. Using API calls for pinMode,digitalRead and digitalWrite. Operation of this library is not guaranteed on this architecture." [-Wcpp]
+    416 | #warning "OneWire. Fallback mode. Using API calls for pinMode,digitalRead and digitalWrite. Operation of this library is not guaranteed on this architecture."
+        |  ^~~~~~~
+  Archiving .pio\build\pico\lib7bd\libUltrasonic.a
+  Indexing .pio\build\pico\lib7bd\libUltrasonic.a
+  .pio\libdeps\pico\OneWire\OneWire.cpp: In member function 'uint8_t OneWire::reset()':
+.pio\libdeps\pico\OneWire\OneWire.cpp(167,24): warning G7C671A4C: unused variable 'reg' [-Wunused-variable]
+    167 |  volatile IO_REG_TYPE *reg IO_REG_BASE_ATTR = baseReg;
+        |                        ^~~
+  .pio\libdeps\pico\OneWire\OneWire.cpp: In member function 'void OneWire::write_bit(uint8_t)':
+.pio\libdeps\pico\OneWire\OneWire.cpp(201,24): warning G7C671A4C: unused variable 'reg' [-Wunused-variable]
+    201 |  volatile IO_REG_TYPE *reg IO_REG_BASE_ATTR = baseReg;
+        |                        ^~~
+  .pio\libdeps\pico\OneWire\OneWire.cpp: In member function 'uint8_t OneWire::read_bit()':
+.pio\libdeps\pico\OneWire\OneWire.cpp(229,24): warning G7C671A4C: unused variable 'reg' [-Wunused-variable]
+    229 |  volatile IO_REG_TYPE *reg IO_REG_BASE_ATTR = baseReg;
+        |                        ^~~
+  Archiving .pio\build\pico\lib602\libAdafruit Unified Sensor.a
+  Indexing .pio\build\pico\lib602\libAdafruit Unified Sensor.a
+  Archiving .pio\build\pico\libc64\libOneWire.a
+  Indexing .pio\build\pico\libc64\libOneWire.a
+  In file included from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_regs/include/hardware/platform_defs.h:12,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/pico_platform/include/pico/platform.h:12,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/common/pico_base/include/pico.h:19,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\variants\RASPBERRY_PI_PICO\double_tap_usb_boot.cpp:2:
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_timer/include/hardware/timer.h: In function 'uint32_t time_us_32()':
+C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_regs/include/hardware/regs/addressmap.h(56,20): warning GCB925CEF: type qualifiers ignored on cast result type [-Wignored-qualifiers]
+     56 | #define TIMER_BASE 0x40054000
+        |                    ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_structs/include/hardware/structs/timer.h:33:38: note: in expansion of macro 'TIMER_BASE'
+     33 | #define timer_hw ((timer_hw_t *const)TIMER_BASE)
+        |                                      ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_timer/include/hardware/timer.h:66:12: note: in expansion of macro 'timer_hw'
+     66 |     return timer_hw->timerawl;
+        |            ^~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_timer/include/hardware/timer.h: In function 'bool time_reached(absolute_time_t)':
+C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_regs/include/hardware/regs/addressmap.h(56,20): warning GCB925CEF: type qualifiers ignored on cast result type [-Wignored-qualifiers]
+     56 | #define TIMER_BASE 0x40054000
+        |                    ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_structs/include/hardware/structs/timer.h:33:38: note: in expansion of macro 'TIMER_BASE'
+     33 | #define timer_hw ((timer_hw_t *const)TIMER_BASE)
+        |                                      ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_timer/include/hardware/timer.h:110:19: note: in expansion of macro 'timer_hw'
+    110 |     uint32_t hi = timer_hw->timerawh;
+        |                   ^~~~~~~~
+C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_regs/include/hardware/regs/addressmap.h(56,20): warning GCB925CEF: type qualifiers ignored on cast result type [-Wignored-qualifiers]
+     56 | #define TIMER_BASE 0x40054000
+        |                    ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_structs/include/hardware/structs/timer.h:33:38: note: in expansion of macro 'TIMER_BASE'
+     33 | #define timer_hw ((timer_hw_t *const)TIMER_BASE)
+        |                                      ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_timer/include/hardware/timer.h:111:33: note: in expansion of macro 'timer_hw'
+    111 |     return (hi >= hi_target && (timer_hw->timerawl >= (uint32_t) target || hi != hi_target));
+        |                                 ^~~~~~~~
+  Archiving .pio\build\pico\libff3\libDallasTemperature.a
+  Indexing .pio\build\pico\libff3\libDallasTemperature.a
+  Archiving .pio\build\pico\lib7c9\libSPI.a
+  Indexing .pio\build\pico\lib7c9\libSPI.a
+  Archiving .pio\build\pico\libd57\libSparkFun SHTC3 Humidity and Temperature Sensor Library.a
+  Indexing .pio\build\pico\libd57\libSparkFun SHTC3 Humidity and Temperature Sensor Library.a
+  Archiving .pio\build\pico\lib3dd\libWire.a
+  Archiving .pio\build\pico\lib9e9\libEZO I2C Sensors.a
+  Indexing .pio\build\pico\lib3dd\libWire.a
+  Archiving .pio\build\pico\lib300\libMax44009.a
+  Indexing .pio\build\pico\lib9e9\libEZO I2C Sensors.a
+  Archiving .pio\build\pico\libFrameworkArduinoVariant.a
+  Indexing .pio\build\pico\lib300\libMax44009.a
+  Indexing .pio\build\pico\libFrameworkArduinoVariant.a
+  Archiving .pio\build\pico\libc1d\libAdafruit BusIO.a
+  In file included from src\Sensorama.h:8,
+                   from src\main.cpp:10:
+  src\perhip/WaterLevel.h: In member function 'virtual DeferredReading WaterLevel::startRead()':
+src\perhip/WaterLevel.h(163,35): warning G2890A887: comparison of integer expressions of different signedness: 'long unsigned int' and 'int' [-Wsign-compare]
+    163 |                 } else if (cmDist < this->m_fullCm) {
+        |                            ~~~~~~~^~~~~~~~~~~~~~~~
+src\perhip/WaterLevel.h(166,35): warning G2890A887: comparison of integer expressions of different signedness: 'long unsigned int' and 'int' [-Wsign-compare]
+    166 |                 } else if (cmDist > this->m_emptyCm) {
+        |                            ~~~~~~~^~~~~~~~~~~~~~~~~
+  In file included from src\main.cpp:10:
+  src\Sensorama.h: In member function 'void Sensorama::update()':
+src\Sensorama.h(189,29): warning G26230CA1: variable length array 'readings' is used [-Wvla]
+    189 |             DeferredReading readings[sensorCount];
+        |                             ^~~~~~~~
+  src\Sensorama.h: In member function 'void Sensorama::updateSync()':
+src\Sensorama.h(247,18): warning G26230CA1: variable length array 'okays' is used [-Wvla]
+    247 |             bool okays[this->sensors.size()];
+        |                  ^~~~~
+src\Sensorama.h(258,31): warning G2890A887: comparison of integer expressions of different signedness: 'int' and 'std::vector<SensorHolder*>::size_type' {aka 'unsigned int'} [-Wsign-compare]
+    258 |             for( int i = 0; i < this->sensors.size(); i++) {
+        |                             ~~^~~~~~~~~~~~~~~~~~~~~~
+  Indexing .pio\build\pico\libc1d\libAdafruit BusIO.a
+  In file included from src\main.cpp:32:
+  src\SerialDataConnection.h: At global scope:
+src\SerialDataConnection.h(94,9): warning GE055CEA3: inline variables are only available with '-std=c++17' or '-std=gnu++17'
+     94 |         inline static SerialDataConnection* instance;
+        |         ^~~~~~
+  In file included from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_regs/include/hardware/platform_defs.h:12,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/pico_platform/include/pico/platform.h:12,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/common/pico_base/include/pico.h:19,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/objects.h:30,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/device.h:35,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/platform.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/FileHandle.h:25,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/macros.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\variants\RASPBERRY_PI_PICO/pins_arduino.h:2,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/Arduino.h:79,
+                   from src\main.cpp:1:
+  src\SerialDataConnection.h: In member function 'void SerialDataConnection::onUartRx()':
+C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_regs/include/hardware/regs/addressmap.h(48,20): warning GCB925CEF: type qualifiers ignored on cast result type [-Wignored-qualifiers]
+     48 | #define UART0_BASE 0x40034000
+        |                    ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_structs/include/hardware/structs/uart.h:32:37: note: in expansion of macro 'UART0_BASE'
+     32 | #define uart0_hw ((uart_hw_t *const)UART0_BASE)
+        |                                     ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:91:37: note: in expansion of macro 'uart0_hw'
+     91 | #define uart0 ((uart_inst_t * const)uart0_hw) ///< Identifier for UART instance 0
+        |                                     ^~~~~~~~
+  src\SerialDataConnection.h:82:26: note: in expansion of macro 'uart0'
+     82 | #define SERIAL_DATA_UART uart0
+        |                          ^~~~~
+  src\SerialDataConnection.h:102:35: note: in expansion of macro 'SERIAL_DATA_UART'
+    102 |             if (!uart_is_readable(SERIAL_DATA_UART)) {
+        |                                   ^~~~~~~~~~~~~~~~
+  In file included from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:11,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/objects.h:40,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/device.h:35,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/platform.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/FileHandle.h:25,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/macros.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\variants\RASPBERRY_PI_PICO/pins_arduino.h:2,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/Arduino.h:79,
+                   from src\main.cpp:1:
+C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_structs/include/hardware/structs/uart.h(32,47): warning GCB925CEF: type qualifiers ignored on cast result type [-Wignored-qualifiers]
+     32 | #define uart0_hw ((uart_hw_t *const)UART0_BASE)
+        |                                               ^
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:91:37: note: in expansion of macro 'uart0_hw'
+     91 | #define uart0 ((uart_inst_t * const)uart0_hw) ///< Identifier for UART instance 0
+        |                                     ^~~~~~~~
+  src\SerialDataConnection.h:82:26: note: in expansion of macro 'uart0'
+     82 | #define SERIAL_DATA_UART uart0
+        |                          ^~~~~
+  src\SerialDataConnection.h:102:35: note: in expansion of macro 'SERIAL_DATA_UART'
+    102 |             if (!uart_is_readable(SERIAL_DATA_UART)) {
+        |                                   ^~~~~~~~~~~~~~~~
+  In file included from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_regs/include/hardware/platform_defs.h:12,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/pico_platform/include/pico/platform.h:12,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/common/pico_base/include/pico.h:19,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/objects.h:30,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/device.h:35,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/platform.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/FileHandle.h:25,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/macros.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\variants\RASPBERRY_PI_PICO/pins_arduino.h:2,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/Arduino.h:79,
+                   from src\main.cpp:1:
+C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_regs/include/hardware/regs/addressmap.h(48,20): warning GCB925CEF: type qualifiers ignored on cast result type [-Wignored-qualifiers]
+     48 | #define UART0_BASE 0x40034000
+        |                    ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_structs/include/hardware/structs/uart.h:32:37: note: in expansion of macro 'UART0_BASE'
+     32 | #define uart0_hw ((uart_hw_t *const)UART0_BASE)
+        |                                     ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:91:37: note: in expansion of macro 'uart0_hw'
+     91 | #define uart0 ((uart_inst_t * const)uart0_hw) ///< Identifier for UART instance 0
+        |                                     ^~~~~~~~
+  src\SerialDataConnection.h:82:26: note: in expansion of macro 'uart0'
+     82 | #define SERIAL_DATA_UART uart0
+        |                          ^~~~~
+  src\SerialDataConnection.h:109:37: note: in expansion of macro 'SERIAL_DATA_UART'
+    109 |             uint8_t cmd = uart_getc(SERIAL_DATA_UART);
+        |                                     ^~~~~~~~~~~~~~~~
+  In file included from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:11,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/objects.h:40,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/device.h:35,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/platform.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/FileHandle.h:25,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/macros.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\variants\RASPBERRY_PI_PICO/pins_arduino.h:2,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/Arduino.h:79,
+                   from src\main.cpp:1:
+C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_structs/include/hardware/structs/uart.h(32,47): warning GCB925CEF: type qualifiers ignored on cast result type [-Wignored-qualifiers]
+     32 | #define uart0_hw ((uart_hw_t *const)UART0_BASE)
+        |                                               ^
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:91:37: note: in expansion of macro 'uart0_hw'
+     91 | #define uart0 ((uart_inst_t * const)uart0_hw) ///< Identifier for UART instance 0
+        |                                     ^~~~~~~~
+  src\SerialDataConnection.h:82:26: note: in expansion of macro 'uart0'
+     82 | #define SERIAL_DATA_UART uart0
+        |                          ^~~~~
+  src\SerialDataConnection.h:109:37: note: in expansion of macro 'SERIAL_DATA_UART'
+    109 |             uint8_t cmd = uart_getc(SERIAL_DATA_UART);
+        |                                     ^~~~~~~~~~~~~~~~
+  In file included from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_regs/include/hardware/platform_defs.h:12,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/pico_platform/include/pico/platform.h:12,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/common/pico_base/include/pico.h:19,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/objects.h:30,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/device.h:35,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/platform.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/FileHandle.h:25,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/macros.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\variants\RASPBERRY_PI_PICO/pins_arduino.h:2,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/Arduino.h:79,
+                   from src\main.cpp:1:
+C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_regs/include/hardware/regs/addressmap.h(48,20): warning GCB925CEF: type qualifiers ignored on cast result type [-Wignored-qualifiers]
+     48 | #define UART0_BASE 0x40034000
+        |                    ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_structs/include/hardware/structs/uart.h:32:37: note: in expansion of macro 'UART0_BASE'
+     32 | #define uart0_hw ((uart_hw_t *const)UART0_BASE)
+        |                                     ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:91:37: note: in expansion of macro 'uart0_hw'
+     91 | #define uart0 ((uart_inst_t * const)uart0_hw) ///< Identifier for UART instance 0
+        |                                     ^~~~~~~~
+  src\SerialDataConnection.h:82:26: note: in expansion of macro 'uart0'
+     82 | #define SERIAL_DATA_UART uart0
+        |                          ^~~~~
+  src\SerialDataConnection.h:117:53: note: in expansion of macro 'SERIAL_DATA_UART'
+    117 |                     if (!uart_is_readable_within_us(SERIAL_DATA_UART, SERIAL_DATA_READ_TIMEOUT_US)) {
+        |                                                     ^~~~~~~~~~~~~~~~
+  In file included from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:11,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/objects.h:40,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/device.h:35,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/platform.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/FileHandle.h:25,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/macros.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\variants\RASPBERRY_PI_PICO/pins_arduino.h:2,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/Arduino.h:79,
+                   from src\main.cpp:1:
+C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_structs/include/hardware/structs/uart.h(32,47): warning GCB925CEF: type qualifiers ignored on cast result type [-Wignored-qualifiers]
+     32 | #define uart0_hw ((uart_hw_t *const)UART0_BASE)
+        |                                               ^
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:91:37: note: in expansion of macro 'uart0_hw'
+     91 | #define uart0 ((uart_inst_t * const)uart0_hw) ///< Identifier for UART instance 0
+        |                                     ^~~~~~~~
+  src\SerialDataConnection.h:82:26: note: in expansion of macro 'uart0'
+     82 | #define SERIAL_DATA_UART uart0
+        |                          ^~~~~
+  src\SerialDataConnection.h:117:53: note: in expansion of macro 'SERIAL_DATA_UART'
+    117 |                     if (!uart_is_readable_within_us(SERIAL_DATA_UART, SERIAL_DATA_READ_TIMEOUT_US)) {
+        |                                                     ^~~~~~~~~~~~~~~~
+  In file included from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_regs/include/hardware/platform_defs.h:12,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/pico_platform/include/pico/platform.h:12,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/common/pico_base/include/pico.h:19,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/objects.h:30,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/device.h:35,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/platform.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/FileHandle.h:25,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/macros.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\variants\RASPBERRY_PI_PICO/pins_arduino.h:2,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/Arduino.h:79,
+                   from src\main.cpp:1:
+C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_regs/include/hardware/regs/addressmap.h(48,20): warning GCB925CEF: type qualifiers ignored on cast result type [-Wignored-qualifiers]
+     48 | #define UART0_BASE 0x40034000
+        |                    ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_structs/include/hardware/structs/uart.h:32:37: note: in expansion of macro 'UART0_BASE'
+     32 | #define uart0_hw ((uart_hw_t *const)UART0_BASE)
+        |                                     ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:91:37: note: in expansion of macro 'uart0_hw'
+     91 | #define uart0 ((uart_inst_t * const)uart0_hw) ///< Identifier for UART instance 0
+        |                                     ^~~~~~~~
+  src\SerialDataConnection.h:82:26: note: in expansion of macro 'uart0'
+     82 | #define SERIAL_DATA_UART uart0
+        |                          ^~~~~
+  src\SerialDataConnection.h:124:38: note: in expansion of macro 'SERIAL_DATA_UART'
+    124 |                     mode = uart_getc(SERIAL_DATA_UART);
+        |                                      ^~~~~~~~~~~~~~~~
+  In file included from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:11,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/objects.h:40,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/device.h:35,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/platform.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/FileHandle.h:25,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/macros.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\variants\RASPBERRY_PI_PICO/pins_arduino.h:2,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/Arduino.h:79,
+                   from src\main.cpp:1:
+C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_structs/include/hardware/structs/uart.h(32,47): warning GCB925CEF: type qualifiers ignored on cast result type [-Wignored-qualifiers]
+     32 | #define uart0_hw ((uart_hw_t *const)UART0_BASE)
+        |                                               ^
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:91:37: note: in expansion of macro 'uart0_hw'
+     91 | #define uart0 ((uart_inst_t * const)uart0_hw) ///< Identifier for UART instance 0
+        |                                     ^~~~~~~~
+  src\SerialDataConnection.h:82:26: note: in expansion of macro 'uart0'
+     82 | #define SERIAL_DATA_UART uart0
+        |                          ^~~~~
+  src\SerialDataConnection.h:124:38: note: in expansion of macro 'SERIAL_DATA_UART'
+    124 |                     mode = uart_getc(SERIAL_DATA_UART);
+        |                                      ^~~~~~~~~~~~~~~~
+  In file included from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_regs/include/hardware/platform_defs.h:12,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/pico_platform/include/pico/platform.h:12,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/common/pico_base/include/pico.h:19,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/objects.h:30,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/device.h:35,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/platform.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/FileHandle.h:25,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/macros.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\variants\RASPBERRY_PI_PICO/pins_arduino.h:2,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/Arduino.h:79,
+                   from src\main.cpp:1:
+C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_regs/include/hardware/regs/addressmap.h(48,20): warning GCB925CEF: type qualifiers ignored on cast result type [-Wignored-qualifiers]
+     48 | #define UART0_BASE 0x40034000
+        |                    ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_structs/include/hardware/structs/uart.h:32:37: note: in expansion of macro 'UART0_BASE'
+     32 | #define uart0_hw ((uart_hw_t *const)UART0_BASE)
+        |                                     ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:91:37: note: in expansion of macro 'uart0_hw'
+     91 | #define uart0 ((uart_inst_t * const)uart0_hw) ///< Identifier for UART instance 0
+        |                                     ^~~~~~~~
+  src\SerialDataConnection.h:82:26: note: in expansion of macro 'uart0'
+     82 | #define SERIAL_DATA_UART uart0
+        |                          ^~~~~
+  src\SerialDataConnection.h:132:55: note: in expansion of macro 'SERIAL_DATA_UART'
+    132 |                     while (uart_is_readable_within_us(SERIAL_DATA_UART, SERIAL_DATA_READ_TIMEOUT_US) && readCtr < sizeof(GrowbotConfig)) {
+        |                                                       ^~~~~~~~~~~~~~~~
+  In file included from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:11,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/objects.h:40,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/device.h:35,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/platform.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/FileHandle.h:25,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/macros.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\variants\RASPBERRY_PI_PICO/pins_arduino.h:2,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/Arduino.h:79,
+                   from src\main.cpp:1:
+C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_structs/include/hardware/structs/uart.h(32,47): warning GCB925CEF: type qualifiers ignored on cast result type [-Wignored-qualifiers]
+     32 | #define uart0_hw ((uart_hw_t *const)UART0_BASE)
+        |                                               ^
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:91:37: note: in expansion of macro 'uart0_hw'
+     91 | #define uart0 ((uart_inst_t * const)uart0_hw) ///< Identifier for UART instance 0
+        |                                     ^~~~~~~~
+  src\SerialDataConnection.h:82:26: note: in expansion of macro 'uart0'
+     82 | #define SERIAL_DATA_UART uart0
+        |                          ^~~~~
+  src\SerialDataConnection.h:132:55: note: in expansion of macro 'SERIAL_DATA_UART'
+    132 |                     while (uart_is_readable_within_us(SERIAL_DATA_UART, SERIAL_DATA_READ_TIMEOUT_US) && readCtr < sizeof(GrowbotConfig)) {
+        |                                                       ^~~~~~~~~~~~~~~~
+  In file included from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_regs/include/hardware/platform_defs.h:12,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/pico_platform/include/pico/platform.h:12,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/common/pico_base/include/pico.h:19,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/objects.h:30,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/device.h:35,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/platform.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/FileHandle.h:25,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/macros.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\variants\RASPBERRY_PI_PICO/pins_arduino.h:2,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/Arduino.h:79,
+                   from src\main.cpp:1:
+C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_regs/include/hardware/regs/addressmap.h(48,20): warning GCB925CEF: type qualifiers ignored on cast result type [-Wignored-qualifiers]
+     48 | #define UART0_BASE 0x40034000
+        |                    ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_structs/include/hardware/structs/uart.h:32:37: note: in expansion of macro 'UART0_BASE'
+     32 | #define uart0_hw ((uart_hw_t *const)UART0_BASE)
+        |                                     ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:91:37: note: in expansion of macro 'uart0_hw'
+     91 | #define uart0 ((uart_inst_t * const)uart0_hw) ///< Identifier for UART instance 0
+        |                                     ^~~~~~~~
+  src\SerialDataConnection.h:82:26: note: in expansion of macro 'uart0'
+     82 | #define SERIAL_DATA_UART uart0
+        |                          ^~~~~
+  src\SerialDataConnection.h:133:75: note: in expansion of macro 'SERIAL_DATA_UART'
+    133 |                         *(((uint8_t*)(&newConfig)) + readCtr) = uart_getc(SERIAL_DATA_UART);
+        |                                                                           ^~~~~~~~~~~~~~~~
+  In file included from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:11,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/objects.h:40,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/device.h:35,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/platform.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/FileHandle.h:25,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/macros.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\variants\RASPBERRY_PI_PICO/pins_arduino.h:2,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/Arduino.h:79,
+                   from src\main.cpp:1:
+C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_structs/include/hardware/structs/uart.h(32,47): warning GCB925CEF: type qualifiers ignored on cast result type [-Wignored-qualifiers]
+     32 | #define uart0_hw ((uart_hw_t *const)UART0_BASE)
+        |                                               ^
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:91:37: note: in expansion of macro 'uart0_hw'
+     91 | #define uart0 ((uart_inst_t * const)uart0_hw) ///< Identifier for UART instance 0
+        |                                     ^~~~~~~~
+  src\SerialDataConnection.h:82:26: note: in expansion of macro 'uart0'
+     82 | #define SERIAL_DATA_UART uart0
+        |                          ^~~~~
+  src\SerialDataConnection.h:133:75: note: in expansion of macro 'SERIAL_DATA_UART'
+    133 |                         *(((uint8_t*)(&newConfig)) + readCtr) = uart_getc(SERIAL_DATA_UART);
+        |                                                                           ^~~~~~~~~~~~~~~~
+  In file included from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_regs/include/hardware/platform_defs.h:12,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/pico_platform/include/pico/platform.h:12,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/common/pico_base/include/pico.h:19,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/objects.h:30,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/device.h:35,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/platform.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/FileHandle.h:25,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/macros.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\variants\RASPBERRY_PI_PICO/pins_arduino.h:2,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/Arduino.h:79,
+                   from src\main.cpp:1:
+C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_regs/include/hardware/regs/addressmap.h(48,20): warning GCB925CEF: type qualifiers ignored on cast result type [-Wignored-qualifiers]
+     48 | #define UART0_BASE 0x40034000
+        |                    ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_structs/include/hardware/structs/uart.h:32:37: note: in expansion of macro 'UART0_BASE'
+     32 | #define uart0_hw ((uart_hw_t *const)UART0_BASE)
+        |                                     ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:91:37: note: in expansion of macro 'uart0_hw'
+     91 | #define uart0 ((uart_inst_t * const)uart0_hw) ///< Identifier for UART instance 0
+        |                                     ^~~~~~~~
+  src\SerialDataConnection.h:82:26: note: in expansion of macro 'uart0'
+     82 | #define SERIAL_DATA_UART uart0
+        |                          ^~~~~
+  src\SerialDataConnection.h:150:45: note: in expansion of macro 'SERIAL_DATA_UART'
+    150 |                     while (uart_is_readable(SERIAL_DATA_UART)) {
+        |                                             ^~~~~~~~~~~~~~~~
+  In file included from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:11,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/objects.h:40,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/device.h:35,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/platform.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/FileHandle.h:25,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/macros.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\variants\RASPBERRY_PI_PICO/pins_arduino.h:2,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/Arduino.h:79,
+                   from src\main.cpp:1:
+C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_structs/include/hardware/structs/uart.h(32,47): warning GCB925CEF: type qualifiers ignored on cast result type [-Wignored-qualifiers]
+     32 | #define uart0_hw ((uart_hw_t *const)UART0_BASE)
+        |                                               ^
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:91:37: note: in expansion of macro 'uart0_hw'
+     91 | #define uart0 ((uart_inst_t * const)uart0_hw) ///< Identifier for UART instance 0
+        |                                     ^~~~~~~~
+  src\SerialDataConnection.h:82:26: note: in expansion of macro 'uart0'
+     82 | #define SERIAL_DATA_UART uart0
+        |                          ^~~~~
+  src\SerialDataConnection.h:150:45: note: in expansion of macro 'SERIAL_DATA_UART'
+    150 |                     while (uart_is_readable(SERIAL_DATA_UART)) {
+        |                                             ^~~~~~~~~~~~~~~~
+  In file included from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_regs/include/hardware/platform_defs.h:12,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/pico_platform/include/pico/platform.h:12,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/common/pico_base/include/pico.h:19,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/objects.h:30,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/device.h:35,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/platform.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/FileHandle.h:25,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/macros.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\variants\RASPBERRY_PI_PICO/pins_arduino.h:2,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/Arduino.h:79,
+                   from src\main.cpp:1:
+C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_regs/include/hardware/regs/addressmap.h(48,20): warning GCB925CEF: type qualifiers ignored on cast result type [-Wignored-qualifiers]
+     48 | #define UART0_BASE 0x40034000
+        |                    ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_structs/include/hardware/structs/uart.h:32:37: note: in expansion of macro 'UART0_BASE'
+     32 | #define uart0_hw ((uart_hw_t *const)UART0_BASE)
+        |                                     ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:91:37: note: in expansion of macro 'uart0_hw'
+     91 | #define uart0 ((uart_inst_t * const)uart0_hw) ///< Identifier for UART instance 0
+        |                                     ^~~~~~~~
+  src\SerialDataConnection.h:82:26: note: in expansion of macro 'uart0'
+     82 | #define SERIAL_DATA_UART uart0
+        |                          ^~~~~
+  src\SerialDataConnection.h:151:35: note: in expansion of macro 'SERIAL_DATA_UART'
+    151 |                         uart_getc(SERIAL_DATA_UART);
+        |                                   ^~~~~~~~~~~~~~~~
+  In file included from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:11,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/objects.h:40,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/device.h:35,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/platform.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/FileHandle.h:25,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/macros.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\variants\RASPBERRY_PI_PICO/pins_arduino.h:2,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/Arduino.h:79,
+                   from src\main.cpp:1:
+C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_structs/include/hardware/structs/uart.h(32,47): warning GCB925CEF: type qualifiers ignored on cast result type [-Wignored-qualifiers]
+     32 | #define uart0_hw ((uart_hw_t *const)UART0_BASE)
+        |                                               ^
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:91:37: note: in expansion of macro 'uart0_hw'
+     91 | #define uart0 ((uart_inst_t * const)uart0_hw) ///< Identifier for UART instance 0
+        |                                     ^~~~~~~~
+  src\SerialDataConnection.h:82:26: note: in expansion of macro 'uart0'
+     82 | #define SERIAL_DATA_UART uart0
+        |                          ^~~~~
+  src\SerialDataConnection.h:151:35: note: in expansion of macro 'SERIAL_DATA_UART'
+    151 |                         uart_getc(SERIAL_DATA_UART);
+        |                                   ^~~~~~~~~~~~~~~~
+  In file included from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_regs/include/hardware/platform_defs.h:12,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/pico_platform/include/pico/platform.h:12,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/common/pico_base/include/pico.h:19,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/objects.h:30,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/device.h:35,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/platform.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/FileHandle.h:25,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/macros.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\variants\RASPBERRY_PI_PICO/pins_arduino.h:2,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/Arduino.h:79,
+                   from src\main.cpp:1:
+  src\SerialDataConnection.h: In member function 'virtual void SerialDataConnection::init()':
+C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_regs/include/hardware/regs/addressmap.h(48,20): warning GCB925CEF: type qualifiers ignored on cast result type [-Wignored-qualifiers]
+     48 | #define UART0_BASE 0x40034000
+        |                    ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_structs/include/hardware/structs/uart.h:32:37: note: in expansion of macro 'UART0_BASE'
+     32 | #define uart0_hw ((uart_hw_t *const)UART0_BASE)
+        |                                     ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:91:37: note: in expansion of macro 'uart0_hw'
+     91 | #define uart0 ((uart_inst_t * const)uart0_hw) ///< Identifier for UART instance 0
+        |                                     ^~~~~~~~
+  src\SerialDataConnection.h:82:26: note: in expansion of macro 'uart0'
+     82 | #define SERIAL_DATA_UART uart0
+        |                          ^~~~~
+  src\SerialDataConnection.h:166:23: note: in expansion of macro 'SERIAL_DATA_UART'
+    166 |             uart_init(SERIAL_DATA_UART, SERIAL_DATA_BAUD);
+        |                       ^~~~~~~~~~~~~~~~
+  In file included from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:11,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/objects.h:40,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/device.h:35,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/platform.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/FileHandle.h:25,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/macros.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\variants\RASPBERRY_PI_PICO/pins_arduino.h:2,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/Arduino.h:79,
+                   from src\main.cpp:1:
+C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_structs/include/hardware/structs/uart.h(32,47): warning GCB925CEF: type qualifiers ignored on cast result type [-Wignored-qualifiers]
+     32 | #define uart0_hw ((uart_hw_t *const)UART0_BASE)
+        |                                               ^
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:91:37: note: in expansion of macro 'uart0_hw'
+     91 | #define uart0 ((uart_inst_t * const)uart0_hw) ///< Identifier for UART instance 0
+        |                                     ^~~~~~~~
+  src\SerialDataConnection.h:82:26: note: in expansion of macro 'uart0'
+     82 | #define SERIAL_DATA_UART uart0
+        |                          ^~~~~
+  src\SerialDataConnection.h:166:23: note: in expansion of macro 'SERIAL_DATA_UART'
+    166 |             uart_init(SERIAL_DATA_UART, SERIAL_DATA_BAUD);
+        |                       ^~~~~~~~~~~~~~~~
+  In file included from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_regs/include/hardware/platform_defs.h:12,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/pico_platform/include/pico/platform.h:12,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/common/pico_base/include/pico.h:19,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/objects.h:30,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/device.h:35,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/platform.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/FileHandle.h:25,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/macros.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\variants\RASPBERRY_PI_PICO/pins_arduino.h:2,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/Arduino.h:79,
+                   from src\main.cpp:1:
+C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_regs/include/hardware/regs/addressmap.h(48,20): warning GCB925CEF: type qualifiers ignored on cast result type [-Wignored-qualifiers]
+     48 | #define UART0_BASE 0x40034000
+        |                    ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_structs/include/hardware/structs/uart.h:32:37: note: in expansion of macro 'UART0_BASE'
+     32 | #define uart0_hw ((uart_hw_t *const)UART0_BASE)
+        |                                     ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:91:37: note: in expansion of macro 'uart0_hw'
+     91 | #define uart0 ((uart_inst_t * const)uart0_hw) ///< Identifier for UART instance 0
+        |                                     ^~~~~~~~
+  src\SerialDataConnection.h:82:26: note: in expansion of macro 'uart0'
+     82 | #define SERIAL_DATA_UART uart0
+        |                          ^~~~~
+  src\SerialDataConnection.h:185:35: note: in expansion of macro 'SERIAL_DATA_UART'
+    185 |             uart_set_fifo_enabled(SERIAL_DATA_UART, false);
+        |                                   ^~~~~~~~~~~~~~~~
+  In file included from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:11,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/objects.h:40,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/device.h:35,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/platform.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/FileHandle.h:25,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/macros.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\variants\RASPBERRY_PI_PICO/pins_arduino.h:2,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/Arduino.h:79,
+                   from src\main.cpp:1:
+C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_structs/include/hardware/structs/uart.h(32,47): warning GCB925CEF: type qualifiers ignored on cast result type [-Wignored-qualifiers]
+     32 | #define uart0_hw ((uart_hw_t *const)UART0_BASE)
+        |                                               ^
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:91:37: note: in expansion of macro 'uart0_hw'
+     91 | #define uart0 ((uart_inst_t * const)uart0_hw) ///< Identifier for UART instance 0
+        |                                     ^~~~~~~~
+  src\SerialDataConnection.h:82:26: note: in expansion of macro 'uart0'
+     82 | #define SERIAL_DATA_UART uart0
+        |                          ^~~~~
+  src\SerialDataConnection.h:185:35: note: in expansion of macro 'SERIAL_DATA_UART'
+    185 |             uart_set_fifo_enabled(SERIAL_DATA_UART, false);
+        |                                   ^~~~~~~~~~~~~~~~
+  In file included from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_regs/include/hardware/platform_defs.h:12,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/pico_platform/include/pico/platform.h:12,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/common/pico_base/include/pico.h:19,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/objects.h:30,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/device.h:35,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/platform.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/FileHandle.h:25,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/macros.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\variants\RASPBERRY_PI_PICO/pins_arduino.h:2,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/Arduino.h:79,
+                   from src\main.cpp:1:
+C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_regs/include/hardware/regs/addressmap.h(48,20): warning GCB925CEF: type qualifiers ignored on cast result type [-Wignored-qualifiers]
+     48 | #define UART0_BASE 0x40034000
+        |                    ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_structs/include/hardware/structs/uart.h:32:37: note: in expansion of macro 'UART0_BASE'
+     32 | #define uart0_hw ((uart_hw_t *const)UART0_BASE)
+        |                                     ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:91:37: note: in expansion of macro 'uart0_hw'
+     91 | #define uart0 ((uart_inst_t * const)uart0_hw) ///< Identifier for UART instance 0
+        |                                     ^~~~~~~~
+  src\SerialDataConnection.h:82:26: note: in expansion of macro 'uart0'
+     82 | #define SERIAL_DATA_UART uart0
+        |                          ^~~~~
+  src\SerialDataConnection.h:190:27: note: in expansion of macro 'SERIAL_DATA_UART'
+    190 |             int uartIrq = SERIAL_DATA_UART == uart0 ? UART0_IRQ : UART1_IRQ;
+        |                           ^~~~~~~~~~~~~~~~
+  In file included from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:11,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/objects.h:40,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/device.h:35,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/platform.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/FileHandle.h:25,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/macros.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\variants\RASPBERRY_PI_PICO/pins_arduino.h:2,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/Arduino.h:79,
+                   from src\main.cpp:1:
+C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_structs/include/hardware/structs/uart.h(32,47): warning GCB925CEF: type qualifiers ignored on cast result type [-Wignored-qualifiers]
+     32 | #define uart0_hw ((uart_hw_t *const)UART0_BASE)
+        |                                               ^
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:91:37: note: in expansion of macro 'uart0_hw'
+     91 | #define uart0 ((uart_inst_t * const)uart0_hw) ///< Identifier for UART instance 0
+        |                                     ^~~~~~~~
+  src\SerialDataConnection.h:82:26: note: in expansion of macro 'uart0'
+     82 | #define SERIAL_DATA_UART uart0
+        |                          ^~~~~
+  src\SerialDataConnection.h:190:27: note: in expansion of macro 'SERIAL_DATA_UART'
+    190 |             int uartIrq = SERIAL_DATA_UART == uart0 ? UART0_IRQ : UART1_IRQ;
+        |                           ^~~~~~~~~~~~~~~~
+  In file included from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_regs/include/hardware/platform_defs.h:12,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/pico_platform/include/pico/platform.h:12,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/common/pico_base/include/pico.h:19,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/objects.h:30,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/device.h:35,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/platform.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/FileHandle.h:25,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/macros.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\variants\RASPBERRY_PI_PICO/pins_arduino.h:2,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/Arduino.h:79,
+                   from src\main.cpp:1:
+C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_regs/include/hardware/regs/addressmap.h(48,20): warning GCB925CEF: type qualifiers ignored on cast result type [-Wignored-qualifiers]
+     48 | #define UART0_BASE 0x40034000
+        |                    ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_structs/include/hardware/structs/uart.h:32:37: note: in expansion of macro 'UART0_BASE'
+     32 | #define uart0_hw ((uart_hw_t *const)UART0_BASE)
+        |                                     ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:91:37: note: in expansion of macro 'uart0_hw'
+     91 | #define uart0 ((uart_inst_t * const)uart0_hw) ///< Identifier for UART instance 0
+        |                                     ^~~~~~~~
+  src\SerialDataConnection.h:190:47: note: in expansion of macro 'uart0'
+    190 |             int uartIrq = SERIAL_DATA_UART == uart0 ? UART0_IRQ : UART1_IRQ;
+        |                                               ^~~~~
+  In file included from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:11,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/objects.h:40,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/device.h:35,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/platform.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/FileHandle.h:25,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/macros.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\variants\RASPBERRY_PI_PICO/pins_arduino.h:2,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/Arduino.h:79,
+                   from src\main.cpp:1:
+C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_structs/include/hardware/structs/uart.h(32,47): warning GCB925CEF: type qualifiers ignored on cast result type [-Wignored-qualifiers]
+     32 | #define uart0_hw ((uart_hw_t *const)UART0_BASE)
+        |                                               ^
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:91:37: note: in expansion of macro 'uart0_hw'
+     91 | #define uart0 ((uart_inst_t * const)uart0_hw) ///< Identifier for UART instance 0
+        |                                     ^~~~~~~~
+  src\SerialDataConnection.h:190:47: note: in expansion of macro 'uart0'
+    190 |             int uartIrq = SERIAL_DATA_UART == uart0 ? UART0_IRQ : UART1_IRQ;
+        |                                               ^~~~~
+  In file included from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_regs/include/hardware/platform_defs.h:12,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/pico_platform/include/pico/platform.h:12,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/common/pico_base/include/pico.h:19,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/objects.h:30,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/device.h:35,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/platform.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/FileHandle.h:25,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/macros.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\variants\RASPBERRY_PI_PICO/pins_arduino.h:2,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/Arduino.h:79,
+                   from src\main.cpp:1:
+C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_regs/include/hardware/regs/addressmap.h(48,20): warning GCB925CEF: type qualifiers ignored on cast result type [-Wignored-qualifiers]
+     48 | #define UART0_BASE 0x40034000
+        |                    ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_structs/include/hardware/structs/uart.h:32:37: note: in expansion of macro 'UART0_BASE'
+     32 | #define uart0_hw ((uart_hw_t *const)UART0_BASE)
+        |                                     ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:91:37: note: in expansion of macro 'uart0_hw'
+     91 | #define uart0 ((uart_inst_t * const)uart0_hw) ///< Identifier for UART instance 0
+        |                                     ^~~~~~~~
+  src\SerialDataConnection.h:82:26: note: in expansion of macro 'uart0'
+     82 | #define SERIAL_DATA_UART uart0
+        |                          ^~~~~
+  src\SerialDataConnection.h:197:34: note: in expansion of macro 'SERIAL_DATA_UART'
+    197 |             uart_set_irq_enables(SERIAL_DATA_UART, true, false);
+        |                                  ^~~~~~~~~~~~~~~~
+  In file included from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:11,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/objects.h:40,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/device.h:35,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/platform.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/FileHandle.h:25,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/macros.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\variants\RASPBERRY_PI_PICO/pins_arduino.h:2,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/Arduino.h:79,
+                   from src\main.cpp:1:
+C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_structs/include/hardware/structs/uart.h(32,47): warning GCB925CEF: type qualifiers ignored on cast result type [-Wignored-qualifiers]
+     32 | #define uart0_hw ((uart_hw_t *const)UART0_BASE)
+        |                                               ^
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:91:37: note: in expansion of macro 'uart0_hw'
+     91 | #define uart0 ((uart_inst_t * const)uart0_hw) ///< Identifier for UART instance 0
+        |                                     ^~~~~~~~
+  src\SerialDataConnection.h:82:26: note: in expansion of macro 'uart0'
+     82 | #define SERIAL_DATA_UART uart0
+        |                          ^~~~~
+  src\SerialDataConnection.h:197:34: note: in expansion of macro 'SERIAL_DATA_UART'
+    197 |             uart_set_irq_enables(SERIAL_DATA_UART, true, false);
+        |                                  ^~~~~~~~~~~~~~~~
+  In file included from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_regs/include/hardware/platform_defs.h:12,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/pico_platform/include/pico/platform.h:12,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/common/pico_base/include/pico.h:19,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/objects.h:30,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/device.h:35,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/platform.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/FileHandle.h:25,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/macros.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\variants\RASPBERRY_PI_PICO/pins_arduino.h:2,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/Arduino.h:79,
+                   from src\main.cpp:1:
+  src\SerialDataConnection.h: In member function 'virtual bool SerialDataConnection::sendState(GrowbotState&)':
+C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_regs/include/hardware/regs/addressmap.h(48,20): warning GCB925CEF: type qualifiers ignored on cast result type [-Wignored-qualifiers]
+     48 | #define UART0_BASE 0x40034000
+        |                    ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_structs/include/hardware/structs/uart.h:32:37: note: in expansion of macro 'UART0_BASE'
+     32 | #define uart0_hw ((uart_hw_t *const)UART0_BASE)
+        |                                     ^~~~~~~~~~
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:91:37: note: in expansion of macro 'uart0_hw'
+     91 | #define uart0 ((uart_inst_t * const)uart0_hw) ///< Identifier for UART instance 0
+        |                                     ^~~~~~~~
+  src\SerialDataConnection.h:82:26: note: in expansion of macro 'uart0'
+     82 | #define SERIAL_DATA_UART uart0
+        |                          ^~~~~
+  src\SerialDataConnection.h:209:27: note: in expansion of macro 'SERIAL_DATA_UART'
+    209 |                 uart_putc(SERIAL_DATA_UART, *(((uint8_t*)(&state)) + i));
+        |                           ^~~~~~~~~~~~~~~~
+  In file included from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:11,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/objects.h:40,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/device.h:35,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/platform.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/platform/include/platform/FileHandle.h:25,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/macros.h:28,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\variants\RASPBERRY_PI_PICO/pins_arduino.h:2,
+                   from C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/Arduino.h:79,
+                   from src\main.cpp:1:
+C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2040/hardware_structs/include/hardware/structs/uart.h(32,47): warning GCB925CEF: type qualifiers ignored on cast result type [-Wignored-qualifiers]
+     32 | #define uart0_hw ((uart_hw_t *const)UART0_BASE)
+        |                                               ^
+  C:\Users\Max\.platformio\packages\framework-arduino-mbed\cores\arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/rp2_common/hardware_uart/include/hardware/uart.h:91:37: note: in expansion of macro 'uart0_hw'
+     91 | #define uart0 ((uart_inst_t * const)uart0_hw) ///< Identifier for UART instance 0
+        |                                     ^~~~~~~~
+  src\SerialDataConnection.h:82:26: note: in expansion of macro 'uart0'
+     82 | #define SERIAL_DATA_UART uart0
+        |                          ^~~~~
+  src\SerialDataConnection.h:209:27: note: in expansion of macro 'SERIAL_DATA_UART'
+    209 |                 uart_putc(SERIAL_DATA_UART, *(((uint8_t*)(&state)) + i));
+        |                           ^~~~~~~~~~~~~~~~
+  In file included from src\PINVStore.h:1,
+                   from src\main.cpp:33:
+  src\NVStore.h: In member function 'virtual void NVStore::readDefaultConfig(GrowbotConfig*)':
+src\NVStore.h(17,36): warning G19C9BF8C: comparison is always false due to limited range of data type [-Wtype-limits]
+     17 |                 for (byte i = 0; i < NUM_BUCKETS; i++) {
+  In file included from src\main.cpp:33:
+  src\PINVStore.h: In member function 'virtual void PINVStore::writeConfig(GrowbotConfig*)':
+src\PINVStore.h(37,21): warning G26230CA1: variable length array 'sector' is used [-Wvla]
+     37 |             uint8_t sector[configSize];
+        |                     ^~~~~~
+src\PINVStore.h(44,31): warning G2890A887: comparison of integer expressions of different signedness: 'int' and 'unsigned int' [-Wsign-compare]
+     44 |             for (int i = 0; i < FLASH_SECTOR_SIZE; i+= FLASH_PAGE_SIZE) {
+  Archiving .pio\build\pico\lib495\libAdafruit BME280 Library.a
+  Indexing .pio\build\pico\lib495\libAdafruit BME280 Library.a
+  In file included from src\main.cpp:6:
+  src\DebugUtils.h: In function 'void printHex(uint8_t)':
+src\DebugUtils.h(105,24): warning G8E4EB445: 'sprintf' writing a terminating nul past the end of the destination [-Wformat-overflow=]
+    105 |   sprintf(hexCar, "%02X", num);
+        |                        ^
+  src\DebugUtils.h:105:10: note: 'sprintf' output 3 bytes into a destination of size 2
+    105 |   sprintf(hexCar, "%02X", num);
+        |   ~~~~~~~^~~~~~~~~~~~~~~~~~~~~
+  Archiving .pio\build\pico\libFrameworkArduino.a
+  Indexing .pio\build\pico\libFrameworkArduino.a
+  Linking .pio\build\pico\firmware.elf
+  Generating UF2 image
+  C:\Users\Max\.platformio\packages\tool-rp2040tools\elf2uf2 ".pio\build\pico\firmware.elf" ".pio\build\pico\firmware.uf2"
+  Checking size .pio\build\pico\firmware.elf
+  Advanced Memory Usage is available via "PlatformIO Home > Project Inspect"
+  RAM:   [==        ]  21.1% (used 57144 bytes from 270336 bytes)
+  Flash: [=         ]   5.3% (used 110932 bytes from 2097152 bytes)
+  Building .pio\build\pico\firmware.bin
+  ========================= [SUCCESS] Took 16.78 seconds =========================

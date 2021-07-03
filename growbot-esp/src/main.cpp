@@ -23,7 +23,6 @@
 #include "WifiManager.h"
 #include "MQTTDataConnection.h"
 #include "EEPROMNVStore.h"
-
 WifiManager wifiMgr(WIFI_SSID, WIFI_PASSWORD);
 MQTTDataConnection dataConn(MQTT_HOST, MQTT_PORT, MQTT_TOPIC, MQTT_CONFIG_TOPIC);
 EEPROMNVStore nvStore;
@@ -58,13 +57,23 @@ GrowbotConfig config;
 GrowbotData data;
 GrowbotState state;
 //i2c stuff
+#ifdef ARDUINO_ARCH_RP2040
 TwoWire* i2cBus = new TwoWire((int)I2C_SDA_PIN, (int)I2C_SCL_PIN);
 I2CMultiplexer i2cMultiplexer(i2cBus, I2C_MULTIPLEXER_ADDRESS, I2C_MULTIPLEXER2_ADDRESS);
 PowerControl powerCtl(i2cBus, &i2cMultiplexer, POWER_MX_PORT, I2C_POWER_CTL_ADDR);
+#endif
+#ifdef ARDUINO_ARCH_ESP32
+TwoWire* i2cBus = &Wire;
+TwoWire* i2cBus2 = &Wire1;
+I2CMultiplexer i2cMultiplexer(i2cBus, i2cBus2, I2C_MULTIPLEXER2_ADDRESS);
+PowerControl powerCtl(i2cBus, I2C_POWER_CTL_ADDR);
+#endif
+
 
 void doImportantTicks() {
   #if ARDUINO_ARCH_ESP32
   ArduinoOTA.handle();
+  wifiMgr.handle();
   #endif
   powerCtl.handle();
   dataConn.handle();
@@ -114,27 +123,38 @@ void debug_scan_i2c(TwoWire *wire, I2CMultiplexer* plex) {
   else
     dbg.printf("done\n");
 }
-Sensorama sensorama = Sensorama(i2cBus, &i2cMultiplexer, &data, &config, doImportantTicks);
+Sensorama sensorama = Sensorama(i2cBus, i2cBus2, &i2cMultiplexer, &data, &config, doImportantTicks);
 
 int operating_mode = GROWBOT_MODE_NORMAL;
 
 void updateFromConfig() {
 
   sensorama.configChanged();
+  for (int i = 0; i < 3; i++) {
   //set power calibration
-  powerCtl.setPowerCalibration(POWER_EXHAUST_FAN_PORT, config.exhaustFanCalibration, false);
-  powerCtl.setPowerCalibration(POWER_INTAKE_FAN_PORT, config.intakeFanCalibration, false);
-  powerCtl.setPowerCalibration(POWER_PUMP_PORT, config.pumpCalibration, false);
+    powerCtl.setPowerCalibration(POWER_EXHAUST_FAN_PORT, config.exhaustFanCalibration, false);
+    delay(50);
+    powerCtl.setPowerCalibration(POWER_INTAKE_FAN_PORT, config.intakeFanCalibration, false);
+    delay(50);
+    powerCtl.setPowerCalibration(POWER_PUMP_PORT, config.pumpCalibration, false);
+    delay(50);
 
-  //set on/off toggles
-  powerCtl.setPowerToggle(POWER_EXHAUST_FAN_PORT, config.exhaustFanOn);
-  powerCtl.setPowerToggle(POWER_INTAKE_FAN_PORT, config.intakeFanOn);
-  powerCtl.setPowerToggle(POWER_PUMP_PORT, config.pumpOn);
+    //set on/off toggles
+    powerCtl.setPowerToggle(POWER_EXHAUST_FAN_PORT, config.exhaustFanOn);
+    delay(50);
+    powerCtl.setPowerToggle(POWER_INTAKE_FAN_PORT, config.intakeFanOn);
+    delay(50);
+    powerCtl.setPowerToggle(POWER_PUMP_PORT, config.pumpOn);
+    delay(50);
 
-  //set power levels
-  powerCtl.setChannelLevel(POWER_EXHAUST_FAN_PORT, config.exhaustFanPercent);
-  powerCtl.setChannelLevel(POWER_INTAKE_FAN_PORT, config.intakeFanPercent);
-  powerCtl.setChannelLevel(POWER_PUMP_PORT, config.pumpPercent);
+    //set power levels
+    powerCtl.setChannelLevel(POWER_EXHAUST_FAN_PORT, config.exhaustFanPercent);
+    delay(50);
+    powerCtl.setChannelLevel(POWER_INTAKE_FAN_PORT, config.intakeFanPercent);
+    delay(50);
+    powerCtl.setChannelLevel(POWER_PUMP_PORT, config.pumpPercent);
+    delay(50);
+  }
 }
 
 #ifdef ARDUINO_ARCH_ESP32
@@ -165,7 +185,7 @@ void sendState() {
 
 void onNewConfig(GrowbotConfig &newConfig) {
   config = newConfig;
-  nvStore.writeConfig(&config);
+  nvStore.writeConfig(config);
   updateFromConfig();
   sendState();
 }
@@ -339,8 +359,10 @@ void setupIO() {
 #endif
 void setup() {  
   Serial.begin(115200);
+  nvStore.init();
   dbg.println("Growbot v.01 starting up...");
   setupIO();
+  delay(6000);
   powerCtl.init();
   dbg.print("Loading config...");
   nvStore.readConfig(&config);
@@ -373,11 +395,11 @@ bool tickNow() {
 
 
 void loop() {
-//debug_scan_i2c(i2cBus, &i2cMultiplexer);
   doImportantTicks();
   if (operating_mode == GROWBOT_MODE_NORMAL) {
     if (tickNow()) {
-
+// debug_scan_i2c(i2cBus, &i2cMultiplexer);
+//debug_scan_i2c(i2cBus2, &i2cMultiplexer);
       sensorama.update();
 
       sendState();
@@ -387,7 +409,7 @@ void loop() {
              operating_mode == GROWBOT_MODE_CALIBRATING_PH_SENSOR_SET_MID ||
              operating_mode == GROWBOT_MODE_CALIBRATING_PH_SENSOR_SET_LOW ||
              operating_mode == GROWBOT_MODE_CALIBRATING_PH_SENSOR_SET_HIGH) {
-    sensorama.updateOne("waterData.ph");
+    sensorama.updateOne("waterData.ph", false);
     //readWaterQualitySensors(true, false);
     sendState();
     delay(2000);
@@ -395,7 +417,7 @@ void loop() {
              operating_mode == GROWBOT_MODE_CALIBRATING_TDS_SENSOR_SET_DRY ||
              operating_mode == GROWBOT_MODE_CALIBRATING_TDS_SENSOR_SET_LOW ||
              operating_mode == GROWBOT_MODE_CALIBRATING_TDS_SENSOR_SET_HIGH ) {
-    sensorama.updateOne("waterData.tds");
+    sensorama.updateOne("waterData.tds", false);
     sendState();
     delay(2000);
   }

@@ -1,3 +1,4 @@
+#ifdef ARDUINO_ARCH_RP2040
 #include "one_wire.h"
 #include <cmath>
 #include <cstdio>
@@ -157,7 +158,7 @@ bool One_wire::search_rom_find_next() {
 	return_value = false;
 	while (!done_flag) {
 		if (!reset_check_for_device()) {
-			printf("Failed to reset one wire bus\n");
+			//printf("Failed to reset one wire bus\n");
 			return false;
 		} else {
 			rom_bit_index = 1;
@@ -171,7 +172,7 @@ bool One_wire::search_rom_find_next() {
 				if (bitA & bitB) {
 					discrepancy_marker = 0;// data read error, this should never happen
 					rom_bit_index = 0xFF;
-					printf("Data read error - no devices on bus?\r\n");
+					//printf("Data read error - no devices on bus?\r\n");
 				} else {
 					if (bitA | bitB) {
 						// Set ROM bit to Bit_A
@@ -214,7 +215,7 @@ bool One_wire::search_rom_find_next() {
 				while (true) {
 					if (i >= found_addresses.size()) {       //End of list, or empty list
 						if (rom_checksum_error(search_ROM)) {// Check the CRC
-							printf("failed crc\r\n");
+							//printf("failed crc\r\n");
 							return false;
 						}
 						rom_address_t address{};
@@ -255,7 +256,7 @@ void One_wire::match_rom(rom_address_t &address) {
 			onewire_byte_out(address.rom[i]);
 		}
 	} else {
-		printf("match_rom failed\n");
+		//printf("match_rom failed\n");
 	}
 }
 
@@ -263,7 +264,7 @@ void One_wire::skip_rom() {
 	if (reset_check_for_device()) {
 		onewire_byte_out(SkipROMCommand);
 	} else {
-		printf("skip_rom failed\n");
+	//	printf("skip_rom failed\n");
 	}
 }
 
@@ -433,7 +434,7 @@ float One_wire::temperature(rom_address_t &address, bool convert_to_fahrenheit) 
 								  (count_per_degree - remaining_count) / count_per_degree);
 				break;
 			default:
-				printf("Unsupported device family\n");
+				//printf("Unsupported device family\n");
 				break;
 		}
 
@@ -453,3 +454,4 @@ bool One_wire::power_supply_available(rom_address_t &address, bool all) {
 	onewire_byte_out(ReadPowerSupplyCommand);
 	return onewire_bit_in();
 }
+#endif

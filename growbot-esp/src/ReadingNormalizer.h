@@ -89,11 +89,12 @@ class ReadingNormalizer {
                     dbg.printf("Normalizer: Reading on %s of %f was invalid and there are too many failed!\n", this->name, reading);
                     return NAN;
                 }
+                dbg.printf("Normalizer: Reading on %s of %f deviates too far!  Returning last good value %f\n", this->name, reading, this->lastGoodRead);
                 return this->lastGoodRead;
             
             } else {
                 this->readFailCount = 0;
-                //dbg.printf("good reading, setting last good read to %f\n", reading);
+                dbg.printf("good reading on %s, setting last good read to %f\n", this->name, reading);
                 this->lastGoodRead = reading;                
             }     
             

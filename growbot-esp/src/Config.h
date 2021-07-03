@@ -5,14 +5,14 @@
 // wifi/network config
 #define WIFI_SSID "MaxNet"
 #define WIFI_PASSWORD "88888888"
-#define MQTT_HOST "192.168.1.182"
+#define MQTT_HOST "growbot"
 #define MQTT_PORT 1883
 #define MQTT_TOPIC "GROWBOT"
 #define MQTT_CONFIG_TOPIC "GROWBOT_CONFIG"
 
 
-#define PH_ENABLE_PIN 14
-#define TDS_ENABLE_PIN 15
+// #define PH_ENABLE_PIN 14
+// #define TDS_ENABLE_PIN 15
 
 // version of the GrowbotConfig in eeprom, change if GrowbotConfic struct changes
 #define CONFIG_VERSION 5
@@ -21,8 +21,7 @@
 
 // I2C
 #define I2C_POWER_CTL_ADDR 0x27
-#define I2C_SDA_PIN 4
-#define I2C_SCL_PIN 5
+
 #define I2C_2_SDA_PIN 18
 #define I2C_2_SCL_PIN 19
 #define I2C_FREQ 100000
@@ -49,7 +48,7 @@
 #define WL_BUCKET_MULTIPLEXER_PORTS [ 1, 2, 3, 4 ]
  
 //onewire submerged water temp sensors
-#define ONEWIRE_PIN 21
+
 //0x28, 0xEE, 0xB5, 0x0C, 0x23, 0x15, 0x00, 0xC8}
 #define WT_CONTROL_BUCKET_ADDRESS {0x28,0xee,0xb5,0x0c,0x23,0x15,0x00,0xc8}//realone: { 0x28, 0x79, 0x6F, 0x76, 0xE0, 0x01, 0x3C, 0xD1 }
 #define WT_BUCKET_ADDRESSES {0x28, 0x79, 0xFC, 0x76, 0xE0, 0x01, 0x3C, 0x28},\
@@ -88,11 +87,28 @@
 #define LUX_SENSOR_3_MX_PORT INNER_AMBIENT_1_MX_PORT
 #define LUX_SENSOR_4_MX_PORT INNER_AMBIENT_2_MX_PORT
 // #define LUX_SENSOR_5_MX_PORT INNER_LIGHTS_MX_PORT
-
+#ifdef ARDUINO_ARCH_RP2040
 #define PH_SENSOR_MX_PORT 0
 #define TDS_SENSOR_MX_PORT 1
 #define POWER_MX_PORT 3
 #define CONTROL_WATER_LEVEL_MX_PORT 2
+#define PH_ENABLE_PIN 14
+#define TDS_ENABLE_PIN 15
+#define I2C_SDA_PIN 4
+#define I2C_SCL_PIN 5
+#define ONEWIRE_PIN 21
+#endif
+#ifdef ARDUINO_ARCH_ESP32
+#define I2C_SDA_PIN 21
+#define I2C_SCL_PIN 22
+#define PH_SENSOR_MX_PORT -1
+#define TDS_SENSOR_MX_PORT -1
+#define POWER_MX_PORT -1
+#define CONTROL_WATER_LEVEL_MX_PORT -1
+#define PH_ENABLE_PIN 12
+#define TDS_ENABLE_PIN 13
+#define ONEWIRE_PIN 25
+#endif
 
 
 #endif

@@ -183,6 +183,7 @@ class PowerControl {
         }
  
         void setPowerToggle(byte portNum, bool on) {
+            this->toggledOn[portNum] = on;
             if (this->toggledOn[portNum]) {
                 this->setChannelLevelInternal(portNum, this->m_channelLevel[portNum]);
             } else {

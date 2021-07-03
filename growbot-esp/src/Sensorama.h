@@ -11,13 +11,20 @@
 #include "perhip/TempHumiditySensor.h"
 #include "Config.h"
 #include "perhip/I2CMultiplexer.h"
+#ifdef ARDUINO_ARCH_RP2040
+#include "perhip/PicoOnewireTempSensor.h"
+#endif
+#ifdef ARDUINO_ARCH_ESP32
+#include "perhip/DallasWaterTempSensor.h"
+#endif
 
 #ifndef SENSORAMA_H
 #define SENSORAMA_H
 #define MAX_READ_TIME_MS 5000
 #define I2COBJ this->wire
+#define I2C2OBJ this->wire2
 #define MAKELUX(NAME, MXPORT) new SensorHolder(\
-                new Max44009Sensor(I2COBJ, i2cMultiplexer, MXPORT),\
+                new Max44009Sensor(I2C2OBJ, i2cMultiplexer, MXPORT),\
                 { new ReadingNormalizer(#NAME, 10, 3, .5f, 0, 100000) },\
                 #NAME,\
                 1,\
@@ -26,9 +33,9 @@
             
 
 #define MAKETEMPHUMID(NAME, TYPE, MXPORT) new SensorHolder(\
-                new TYPE(I2COBJ, i2cMultiplexer, MXPORT),\
+                new TYPE(I2C2OBJ, i2cMultiplexer, MXPORT),\
                 { new ReadingNormalizer(#NAME ".temperatureC", 10, 3, .5f, 0, 70),\
-                  new ReadingNormalizer(#NAME ".humidity", 10, 3, .5f, 1, 100) },\
+                  new ReadingNormalizer(#NAME ".humidity", 10, 3, .5f, 1, 99) },\
                 #NAME,\
                 2,\
                 { &this->data->NAME.temperatureC, &this->data->NAME.humidity },\
@@ -37,7 +44,7 @@
 
 #define MAKEWATERLEVEL(NAME, MXPORT, CONFIGPROP) new SensorHolder(\
                 new WaterLevel(I2COBJ, i2cMultiplexer, MXPORT),\
-                {new ReadingNormalizer(#NAME, 10, 3, .5f, 0, 70)},\
+                {new ReadingNormalizer(#NAME, 10, 3, .5f, 0, 100)},\
                 #NAME,\
                 1,\
                 { &this->data->NAME },\
@@ -96,10 +103,11 @@ class Sensorama {
         OneWire* oneWire = new OneWire(ONEWIRE_PIN);
         DallasTemperature* dallasTemp = new DallasTemperature(oneWire);        
         TwoWire* wire;
-        
+        TwoWire* wire2;
     public:
-        Sensorama(TwoWire* wire, I2CMultiplexer* i2cPlexer, GrowbotData* growbotData, GrowbotConfig* growbotConfig, std::function<void()> importantTicksCallback) {
+        Sensorama(TwoWire* wire, TwoWire* wire2, I2CMultiplexer* i2cPlexer, GrowbotData* growbotData, GrowbotConfig* growbotConfig, std::function<void()> importantTicksCallback) {
             this->wire = wire;
+            this->wire2 = wire2;
             this->i2cMultiplexer = i2cPlexer;
             this->data = growbotData;    
             this->config = growbotConfig;
@@ -116,19 +124,19 @@ class Sensorama {
 
            //light sensors
            this->sensors.push_back(MAKELUX(luxAmbient1, 15));
-           this->sensors.push_back(MAKELUX(luxAmbient2, 1));
-           this->sensors.push_back(MAKELUX(luxAmbient3, 4));
-           this->sensors.push_back(MAKELUX(luxAmbient4, 5));
+           //this->sensors.push_back(MAKELUX(luxAmbient2, 14));
+         //  this->sensors.push_back(MAKELUX(luxAmbient3, 13));
+         //  this->sensors.push_back(MAKELUX(luxAmbient4, 12));
 
            //temperature/humidity sensors
-           this->sensors.push_back(MAKETEMPHUMID(exhaustInternal, BME280Sensor, 15));
-           this->sensors.push_back(MAKETEMPHUMID(intakeInternal, BME280Sensor, 8));
-           this->sensors.push_back(MAKETEMPHUMID(intakeExternal, SHTC3Sensor, 9));
-           this->sensors.push_back(MAKETEMPHUMID(exhaustExternal, SHTC3Sensor, 10));            
-           this->sensors.push_back(MAKETEMPHUMID(ambientInternal1, BME280Sensor, 11));
-           this->sensors.push_back(MAKETEMPHUMID(ambientInternal2, BME280Sensor, 12));
-           this->sensors.push_back(MAKETEMPHUMID(ambientInternal3, BME280Sensor, 13));
-           this->sensors.push_back(MAKETEMPHUMID(lights, SHTC3Sensor, 14));
+           this->sensors.push_back(MAKETEMPHUMID(ambientInternal1, BME280Sensor, 15));
+          // this->sensors.push_back(MAKETEMPHUMID(intakeInternal, BME280Sensor, 13));
+          // this->sensors.push_back(MAKETEMPHUMID(intakeExternal, SHTC3Sensor, 9));
+          // this->sensors.push_back(MAKETEMPHUMID(exhaustExternal, SHTC3Sensor, 10));            
+          // this->sensors.push_back(MAKETEMPHUMID(ambientInternal1, BME280Sensor, 15));
+          // this->sensors.push_back(MAKETEMPHUMID(ambientInternal2, BME280Sensor, 12));
+           //this->sensors.push_back(MAKETEMPHUMID(ambientInternal3, BME280Sensor, 13));
+          // this->sensors.push_back(MAKETEMPHUMID(lights, SHTC3Sensor, 14));
             configChanged();
             for (auto sensor : this->sensors) sensor->sensor->init();
         }
@@ -148,7 +156,7 @@ class Sensorama {
             dbg.printf("Sensorama: getSensor(%s) failed!  No sensor with that name!", name);
             return NULL;
         }
-        bool updateOne(const char* name) {
+        bool updateOne(const char* name, bool normalize = true) {
             bool ok = false;
             for (auto sensor : this->sensors) {
                 if (strcmp(name, sensor->name) == 0) {
@@ -172,8 +180,12 @@ class Sensorama {
                     }
                     
                     for (byte x = 0; x < sensor->valueCount; x++) {
-                        //dbg.printf("\tNormalizing value #%d of %f to %s\n", x, reading->values[x], sensor->name);
-                        *sensor->valueAddrs[x] = sensor->normalizers[x]->normalizeReading(reading.values[x]);
+                        if (normalize) {
+                            //dbg.printf("\tNormalizing value #%d of %f to %s\n", x, reading->values[x], sensor->name);
+                            *sensor->valueAddrs[x] = sensor->normalizers[x]->normalizeReading(reading.values[x]);
+                        } else {
+                            *sensor->valueAddrs[x] = reading.values[x];
+                        }
                         dbg.printf("Sensorama: %s OK\n", sensor->name);
                     }
                     return ok;
@@ -186,7 +198,7 @@ class Sensorama {
             dbg.println("Sensorama: starting update");
             for (auto sensor : this->sensors) sensor->sensor->preupdate(this->data);
             int sensorCount = this->sensors.size();
-            DeferredReading readings[sensorCount];
+            DeferredReading* readings = (DeferredReading*)malloc(sensorCount * sizeof(DeferredReading));
             int ctr = 0;
             for (auto sensor : this->sensors) {
                 readings[ctr] = sensor->sensor->startRead();
@@ -209,6 +221,7 @@ class Sensorama {
                     if (!reading->isComplete) {
                         outstanding = true;
                         if (millisElapsed(reading->deferUntil)) {
+
                             this->sensors[i]->sensor->finishRead(*reading);
                             if (!reading->isSuccessful) {
                                 for (byte x = 0; x < MAX_READING_COUNT; x++) {
@@ -220,7 +233,7 @@ class Sensorama {
                     }
                 }
                 this->importantTicks();
-                delay(100);
+                delay(10);
             } while (outstanding);
             for (int i = 0; i < sensorCount; i++) {
                 auto reading = &readings[i];
@@ -238,13 +251,14 @@ class Sensorama {
                 } else {
                     dbg.printf("Sensorama: %s FAILED\n", sensor->name);
                 }
-                delay(100);            
+                delay(10);            
             }
+            free(readings);
             unsigned long end = millis();
             dbg.printf("Sensorama: finished updating sensors in %lu ms\n", (end - start));
         }
         void updateSync() {
-            bool okays[this->sensors.size()];
+            bool* okays = (bool*)malloc(this->sensors.size());
             dbg.println("Sensorama: starting update");
             unsigned long start = millis();
             int ctr = 0;
@@ -255,9 +269,10 @@ class Sensorama {
             unsigned long end = millis();
             dbg.printf("Sensorama: finished updating sensors in %lu ms\n", (end - start));
             delay(200);
-            for( int i = 0; i < this->sensors.size(); i++) {
+            for(uint i = 0; i < this->sensors.size(); i++) {
                 dbg.printf("Sensorama: %s %s\n", this->sensors[i]->name, okays[i]?"OK":"FAILED");
             }
+            free(okays);
         }
 };
 

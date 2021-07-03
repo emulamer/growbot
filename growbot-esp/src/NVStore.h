@@ -7,14 +7,14 @@
     class NVStore {
         public:
             virtual void readConfig(GrowbotConfig* config) = 0;
-            virtual void writeConfig(GrowbotConfig* config) = 0;
+            virtual void writeConfig(GrowbotConfig &config) = 0;
             virtual void readDefaultConfig(GrowbotConfig* config) {
                 config->exhaustFanPercent = 100;
                 config->intakeFanPercent = 100;
                 config->pumpPercent = 100;
                 config->controlWaterLevelCalibration.emptyCm = 14;
                 config->controlWaterLevelCalibration.fullCm = 4;
-                for (byte i = 0; i < NUM_BUCKETS; i++) {
+                for (int i = 0; i < NUM_BUCKETS; i++) {
                     config->bucketWaterLevelCalibration[i].emptyCm = 14;
                     config->bucketWaterLevelCalibration[i].fullCm = 4;
                 }

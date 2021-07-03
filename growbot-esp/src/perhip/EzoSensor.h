@@ -7,7 +7,7 @@
 
 #ifndef EZOSENSOR_H
 #define EZOSENSOR_H
-#define EZO_BUFFER_LEN 41
+#define EZO_BUFFER_LEN 45
 
 #define EZO_CALIBRATE_LOW 1
 #define EZO_CALIBRATE_MID 2
@@ -32,12 +32,12 @@ class EzoSensor : public SensorBase {
         } 
         bool recCheck() {
             this->doPlex();
-            memset(this->buffer, 0, EZO_BUFFER_LEN);
+
             auto status = board->receive_cmd(this->buffer, EZO_BUFFER_LEN);
             if (status == Ezo_board::errors::SUCCESS) {
                 return true;
             } else {
-                dbg.printf("%s: sensor receive command failed with status code %d\n", this->name, status);
+                dbg.printf("%s: sensor receive command failed with status code %d, buffer is %s\n", this->name, status, this->buffer);
                 return false;
             }
         }
@@ -53,7 +53,7 @@ class EzoSensor : public SensorBase {
                 memset(this->buffer, 0, EZO_BUFFER_LEN);
                 snprintf(this->buffer, EZO_BUFFER_LEN, "RT,%f", this->waterTempC);
                 this->board->send_cmd(this->buffer);
-                delay(900);
+                delay(1000);
                 if (!this->recCheck()) {
                     dbg.printf("%s: read with temperature compensation failed on retry %d! Response: %s\n", this->name, i, this->buffer);
                 } else {
@@ -62,6 +62,7 @@ class EzoSensor : public SensorBase {
             }
             //dbg.printf("Sensor %s responded with %s\n", this->name, this->buffer);
             float val = atof(this->buffer);
+            
             return val;
         }
         bool calibrateSensor(byte point, float reference) {
@@ -79,7 +80,7 @@ class EzoSensor : public SensorBase {
                 }
                 this->doPlex();    
                 this->board->send_cmd(this->buffer);
-                delay(900);
+                delay(1000);
                 if (!this->recCheck()) {
                     dbg.println("set calibration point failed!  Trying again...");
                 } else {
@@ -111,13 +112,14 @@ class EzoSensor : public SensorBase {
         virtual void init() {
             pinMode(this->enPin, OUTPUT);
             digitalWrite(this->enPin, 0);
-            delay(200);
+            delay(1000);
             digitalWrite(this->enPin, 1);
+            delay(1000);
             this->doPlex();
             this->board->send_cmd("Status");
-            delay(300);
+            delay(400);
             if (this->recCheck()) {
-                //dbg.printf("%s: sensor responded with: %s\n", this->name, this->buffer);
+                dbg.printf("%s: sensor passed status check and responded with: %s\n", this->name, this->buffer);
                 this->isOk = true;
             } else {
                 dbg.printf("%s: sensor failed init\n", this->name);
@@ -135,8 +137,12 @@ class EzoSensor : public SensorBase {
             } else {
                 this->waterTempC = tempC;
             }
+            dbg.printf("Using temp provided for compensation: %f\n", tempC);
         }
         virtual DeferredReading startRead() {
+            if (!this->isOk) {
+                this->init();
+            }
             DeferredReading reading;            
             reading.isComplete = false;
             reading.readingCount = 1;

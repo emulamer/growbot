@@ -1,6 +1,6 @@
 #include "GrowbotData.h"
 #include <Arduino.h>
-#include <vector>
+ #include <functional>
 #ifndef DATACONNECTION_H
 #define DATACONNECTION_H
 
@@ -13,9 +13,6 @@
 #define CMD_SET_OPERATING_MODE 0x2
 #define CMD_SET_CONFIG 0x10
 
-/*
-    going to need some mode for calibration
-*/
 class DataConnection {
     protected:
         std::vector<std::function<void(uint8_t mode)>> onModeChangeCallbacks;

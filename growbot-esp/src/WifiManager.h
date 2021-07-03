@@ -4,10 +4,13 @@
 #include "DebugUtils.h"
 #ifndef WIFIMANAGER_H
 #define WIFIMANAGER_H
+
+#define WIFI_STRENGTH_REPORT_FREQ_MS 5000
 class WifiManager {
     private:
         const char* ssid;
         const char* password;
+        unsigned long lastReportStamp = 0;
         Ticker wifiReconnectTimer;
         IPAddress emptyip = IPAddress(0,0,0,0);
         void connectWifi() {
@@ -45,6 +48,16 @@ class WifiManager {
         }
         void init() {
             connectWifi();
+        }
+        void handle() {
+            if (lastReportStamp < millis()) {
+                if (!WiFi.isConnected()) {
+                    dbg.printf("Wifi SSID %s not connected!\n", this->ssid)    ;
+                } else {
+                    dbg.printf("Wifi SSID %s connected, strength %d\n", this->ssid, WiFi.RSSI());
+                }   
+                lastReportStamp = millis() + WIFI_STRENGTH_REPORT_FREQ_MS;             
+            }
         }
 };
 #endif

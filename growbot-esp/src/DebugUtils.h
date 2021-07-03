@@ -99,12 +99,12 @@ UdpPrint dbg;
 SerialPrint dbg;
 #endif
 
-void printHex(uint8_t num) {
-  char hexCar[2];
+// void printHex(uint8_t num) {
+//   char hexCar[2];
 
-  sprintf(hexCar, "%02X", num);
-  dbg.print(hexCar);
-}
+//   sprintf(hexCar, "%02X", num);
+//   dbg.print(hexCar);
+// }
 // void debug_find_onewire_sensors(OneWire oneWire) {
 //   oneWire.reset_search();
 //   DeviceAddress addr;

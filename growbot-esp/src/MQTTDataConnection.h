@@ -4,6 +4,7 @@
 #include "DebugUtils.h"
 #include "GrowbotData.h"
 #include "DataConnection.h"
+#include <mdns.h>
 
 #ifndef MQTTDATACONNECTION_H
 #define MQTTDATACONNECTION_H
@@ -16,19 +17,57 @@ class MQTTDataConnection : public DataConnection {
         const char* mqttHost;
         short mqttPort;
 
+        void reconnectTimerTick() {
+            reconnectTimerSet = false;
+            if (!WiFi.isConnected()) {
+                dbg.printf("MQTT: Wifi isn't connected, will try rescheduling reconnect again.\n");
+                startReconnectTimer();
+            } else {
+                dbg.printf("MQTT: Wifi is connected, doing mqtt connect.\n");
+                connectMqtt();
+            }            
+        }
 
         void connectMqtt() {
             dbg.println("connectMqtt..");
-            if (!this->mqttClient.connected() && WiFi.isConnected()) {
-                dbg.printf("Connecting MQTT to %s:%d...\n", this->mqttHost, this->mqttPort);
-                this->mqttClient.connect();
+            if (mqttClient.connected()) {
+                dbg.println("connectMqtt called but MQTT is already conected.");
+                return;
+            }
+            if (!WiFi.isConnected()) {
+                dbg.println("MQTT not in a state to connect, probably Wifi is not ready.");
             } else {
-                if (this->mqttClient.connected()) {
-                    dbg.println("MQTT already connected");
+                dbg.printf("MQTT: mDNS resolving %s.local\n", mqttHost);
+                bool mdnsResolved = false;
+                struct ip4_addr addr;
+                addr.addr = 0;
+                esp_err_t err = mdns_query_a(mqttHost, 2000,  &addr);
+                if(err){
+                    if(err == ESP_ERR_NOT_FOUND){
+                        dbg.printf("mDNS Host %s was not found!\n", mqttHost);
+                        mdnsResolved = false;
+                    }
+                    dbg.printf("mDNS Query Failed\n");
+                    mdnsResolved = false;
                 } else {
-                    dbg.println("MQTT not in a state to connect, probably Wifi is not ready.");
+                    mdnsResolved = true;
+                    dbg.printf("mDNS Resolved %s to %d.%d.%d.%d\n", mqttHost, IP2STR(&addr));
                 }
                 
+                if (mdnsResolved) {
+                    dbg.printf("MQTT connecting to resovled mDNS IP %d.%d.%d.%d port %d\n", IP2STR(&addr), this->mqttPort);
+                    IPAddress mdnsAddress = IPAddress(addr.addr);
+                    this->mqttClient.setServer(mdnsAddress, this->mqttPort);
+                } else {
+                    dbg.printf("MQTT connecting with hostname %s port %d\n", this->mqttHost, this->mqttPort);
+                    this->mqttClient.setServer(this->mqttHost, this->mqttPort);
+                }
+
+
+                
+                dbg.printf("Connecting MQTT to %s:%d...\n", this->mqttHost, this->mqttPort);
+                this->mqttClient.connect();
+            
             }
         }
         void onWifiConnect(WiFiEvent_t event, WiFiEventInfo_t info) {
@@ -41,8 +80,16 @@ class MQTTDataConnection : public DataConnection {
         void onMqttDisconnect(AsyncMqttClientDisconnectReason reason) {
             dbg.println("Disconnected from MQTT.");
 
-            if (WiFi.isConnected()) {
-                this->mqttReconnectTimer.once(2, +[](MQTTDataConnection* instance) { instance->connectMqtt(); }, this);
+            startReconnectTimer();
+        }
+        bool reconnectTimerSet = false;
+        void startReconnectTimer() {
+            if (!reconnectTimerSet) {
+                dbg.printf("Starting reconnect timer...\n");
+                reconnectTimerSet = true;
+                this->mqttReconnectTimer.once(2, +[](MQTTDataConnection* instance) { instance->reconnectTimerTick(); }, this);
+            } else {
+                dbg.printf("Reconnect timer already set.\n");
             }
         }
         void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total) {
@@ -91,13 +138,13 @@ class MQTTDataConnection : public DataConnection {
             this->mqttHost = host;
             this->mqttPort = port;
         }
+        void handle() {}
         void init() {
             WiFi.onEvent(std::bind(&MQTTDataConnection::onWifiConnect, this,  std::placeholders::_1, std::placeholders::_2), SYSTEM_EVENT_STA_GOT_IP);
             this->mqttClient.onConnect(std::bind(&MQTTDataConnection::onMqttConnect, this,  std::placeholders::_1));
             this->mqttClient.onDisconnect(std::bind(&MQTTDataConnection::onMqttDisconnect, this,  std::placeholders::_1));//[this](AsyncMqttClientDisconnectReason reason) { this->onMqttDisconnect(reason); });
             this->mqttClient.onMessage(std::bind(&MQTTDataConnection::onMqttMessage, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
             this->mqttClient.onSubscribe(std::bind(&MQTTDataConnection::onMqttSubscribe, this, std::placeholders::_1, std::placeholders::_2));
-            this->mqttClient.setServer(this->mqttHost, this->mqttPort);
             this->connectMqtt();
         }
 
@@ -105,6 +152,9 @@ class MQTTDataConnection : public DataConnection {
             if (this->mqttClient.connected()) {
                 this->mqttClient.publish(this->mqttPublishTopic, 1, false, (const char*)&state, sizeof(GrowbotState));
                 return true;
+            } else {
+                dbg.printf("MQTT couldn't sent state, not connected!:\n");
+                startReconnectTimer();
             }
             return false;
         }
