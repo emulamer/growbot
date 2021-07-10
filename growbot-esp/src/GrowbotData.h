@@ -38,16 +38,24 @@ struct PowerControlCalibration {
     }
 };
 
+enum ThermostatMode { Off, On, Thermostat };
+struct ThermostatSetting {
+    public:
+        ThermostatMode mode;
+};
+struct FixedThermostatSetting : public ThermostatSetting {
+    float minValue;
+    float maxValue;
+};
+
 
 struct GrowbotConfig {
     int exhaustFanPercent;
     int intakeFanPercent;
-    int pumpPercent;
     int roomFansPercent;
     //these are bit flags for on/off for various things
     bool exhaustFanOn;
     bool intakeFanOn;
-    bool pumpOn;
     bool roomFansOn;
     bool overheadLightsOn;
     bool sideLightsOn;
@@ -55,9 +63,11 @@ struct GrowbotConfig {
     WaterLevelCalibration bucketWaterLevelCalibration[DATA_BUCKET_COUNT];
     PowerControlCalibration exhaustFanCalibration;
     PowerControlCalibration intakeFanCalibration;
-    PowerControlCalibration pumpCalibration;
     int samplingIntervalMS;
+    FixedThermostatSetting waterChillerThermostat;
 };
+
+
 
 struct GrowbotData {
     TempHumidity exhaustInternal;
@@ -75,7 +85,8 @@ struct GrowbotData {
     float luxAmbient5;
     WaterData waterData;
     BucketData controlBucket;
-    BucketData buckets[DATA_BUCKET_COUNT];
+    float waterChillerStatus;
+    BucketData buckets[DATA_BUCKET_COUNT];    
 };
 
 struct GrowbotState {

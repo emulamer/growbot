@@ -15,7 +15,7 @@
 // #define TDS_ENABLE_PIN 15
 
 // version of the GrowbotConfig in eeprom, change if GrowbotConfic struct changes
-#define CONFIG_VERSION 5
+#define CONFIG_VERSION 6
 
 #define NUM_BUCKETS 0
 
@@ -31,7 +31,9 @@
 //Power control port config
 #define POWER_EXHAUST_FAN_PORT 0
 #define POWER_INTAKE_FAN_PORT 1
-#define POWER_PUMP_PORT 2
+
+//switcheroo power config
+#define SWITCHEROO_CHILLER_PORT 0
 
 //ultrasonic water level config
 

@@ -16,6 +16,8 @@
 #include "perhip/ConductivitySensor.h"
 #include "perhip/TempHumiditySensor.h"
 #include "perhip/PowerControl.h"
+#include "Thermostat.h"
+#include "perhip/Switcheroo.h"
 #ifdef ARDUINO_ARCH_ESP32
 #include <ArduinoOTA.h>
 #include "soc/rtc_wdt.h"
@@ -67,7 +69,10 @@ TwoWire* i2cBus = &Wire;
 TwoWire* i2cBus2 = &Wire1;
 I2CMultiplexer i2cMultiplexer(i2cBus, i2cBus2, I2C_MULTIPLEXER2_ADDRESS);
 PowerControl powerCtl(i2cBus, I2C_POWER_CTL_ADDR);
+Switcheroo* switcheroo = new Switcheroo(i2cBus2, &i2cMultiplexer, 9);
 #endif
+
+FixedThermostat chillerThermostat;
 
 
 void doImportantTicks() {
@@ -136,23 +141,18 @@ void updateFromConfig() {
     delay(50);
     powerCtl.setPowerCalibration(POWER_INTAKE_FAN_PORT, config.intakeFanCalibration, false);
     delay(50);
-    powerCtl.setPowerCalibration(POWER_PUMP_PORT, config.pumpCalibration, false);
-    delay(50);
+    
 
     //set on/off toggles
     powerCtl.setPowerToggle(POWER_EXHAUST_FAN_PORT, config.exhaustFanOn);
     delay(50);
     powerCtl.setPowerToggle(POWER_INTAKE_FAN_PORT, config.intakeFanOn);
     delay(50);
-    powerCtl.setPowerToggle(POWER_PUMP_PORT, config.pumpOn);
-    delay(50);
 
     //set power levels
     powerCtl.setChannelLevel(POWER_EXHAUST_FAN_PORT, config.exhaustFanPercent);
     delay(50);
     powerCtl.setChannelLevel(POWER_INTAKE_FAN_PORT, config.intakeFanPercent);
-    delay(50);
-    powerCtl.setChannelLevel(POWER_PUMP_PORT, config.pumpPercent);
     delay(50);
   }
 }
@@ -305,6 +305,10 @@ void onModeChange(byte mode) {
   }
   sendState();
 }
+
+void updateThermostats() {
+  chillerThermostat.handle();
+}
 #ifdef ARDUINO_ARCH_ESP32
 void setupIO() {
   periph_module_disable(PERIPH_I2C0_MODULE);
@@ -346,6 +350,20 @@ void setupIO() {
       else if (error == OTA_RECEIVE_ERROR) dbg.println("Receive Failed");
       else if (error == OTA_END_ERROR) dbg.println("End Failed");
     });
+    chillerThermostat.init(&config.waterChillerThermostat, &data.controlBucket.temperatureC,
+      [](bool isOn, float value) { 
+        if (isOn) {
+          dbg.printf("chiller thermostat is on \n");
+          switcheroo->setPowerToggle(SWITCHEROO_CHILLER_PORT, true);
+          data.waterChillerStatus = 100;
+        } else {
+          dbg.printf("chiller thermostat is off \n");
+          switcheroo->setPowerToggle(SWITCHEROO_CHILLER_PORT, false);
+          data.waterChillerStatus = 0;
+        }
+      }
+    );
+    switcheroo->init();
     dbg.print("Wifi...");
     wifiMgr.init();
     dbg.println("connecting.");
@@ -401,7 +419,7 @@ void loop() {
 // debug_scan_i2c(i2cBus, &i2cMultiplexer);
 //debug_scan_i2c(i2cBus2, &i2cMultiplexer);
       sensorama.update();
-
+      updateThermostats();
       sendState();
       dbg.printf("Waiting to sample again for %d\n", config.samplingIntervalMS);
     }

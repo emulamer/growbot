@@ -15,5 +15,23 @@ server.on('listening', () => {
   const address = server.address();
   console.log(`server listening ${address.address}:${address.port}`);
 });
-
-server.bind(44444);
+console.log(process.argv);
+if (process.argv.length > 2 && process.argv[2] == "ws") {
+  var socket = new WebSocket('ws://growbot-doser:8118');
+  socket.binaryType = 'arraybuffer';
+  socket.onmessage = (msg) => {
+    console.log("got message: " + msg.data.toString());
+  }
+  socket.onopen(e => {
+    console.log("onopen");
+    var bytes = new Uint8Array(2);
+    bytes[0] = 0xB1;
+    bytes[1] = 0;
+    socket.send(bytes);
+  })
+}
+if (process.argv.length > 2 && process.argv[2] == "doser") {
+  server.bind(44445);  
+} else {
+  server.bind(44444);
+}

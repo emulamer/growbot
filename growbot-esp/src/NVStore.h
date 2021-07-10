@@ -11,7 +11,6 @@
             virtual void readDefaultConfig(GrowbotConfig* config) {
                 config->exhaustFanPercent = 100;
                 config->intakeFanPercent = 100;
-                config->pumpPercent = 100;
                 config->controlWaterLevelCalibration.emptyCm = 14;
                 config->controlWaterLevelCalibration.fullCm = 4;
                 for (int i = 0; i < NUM_BUCKETS; i++) {
@@ -22,14 +21,13 @@
                 config->exhaustFanCalibration.minOffset = 1;
                 config->intakeFanCalibration.maxOffset = 30;
                 config->intakeFanCalibration.minOffset = 1;
-                config->pumpCalibration.maxOffset = 30;
-                config->pumpCalibration.minOffset = 1;
+                config->waterChillerThermostat.mode = ThermostatMode::Thermostat;
+                config->waterChillerThermostat.minValue = 0;
+                config->waterChillerThermostat.maxValue = 100;
                 config->samplingIntervalMS = 10000;
-                config->pumpOn = true;
                 config->exhaustFanOn = true;
                 config->intakeFanOn = true;
                 config->overheadLightsOn = true;
-                config->pumpOn = true;
                 config->sideLightsOn = true;
             }
     };
