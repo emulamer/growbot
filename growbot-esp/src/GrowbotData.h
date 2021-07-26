@@ -5,13 +5,7 @@
 
 //note: data struct currently accounts for 4 buckets, when they're hooked up make this NUM_BUCKETS
 #define DATA_BUCKET_COUNT 4
-struct WaterLevelCalibration {
-    //centimeters of distance when bucket is full
-    int fullCm;
 
-    //centimeters of distance when bucket is empty
-    int emptyCm;
-};
 struct WaterData {
     float ph;
     float tds;
@@ -59,8 +53,6 @@ struct GrowbotConfig {
     bool roomFansOn;
     bool overheadLightsOn;
     bool sideLightsOn;
-    WaterLevelCalibration controlWaterLevelCalibration;
-    WaterLevelCalibration bucketWaterLevelCalibration[DATA_BUCKET_COUNT];
     PowerControlCalibration exhaustFanCalibration;
     PowerControlCalibration intakeFanCalibration;
     int samplingIntervalMS;

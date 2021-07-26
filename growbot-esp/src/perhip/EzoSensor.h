@@ -131,7 +131,7 @@ class EzoSensor : public SensorBase {
             this->setWaterTempCompensation(data->controlBucket.temperatureC);
         }
         void setWaterTempCompensation(float tempC) {
-            if (isnan(tempC) || tempC < 0 || tempC > 50) {
+            if (isnan(tempC) || tempC <= 0 || tempC > 50) {
                 dbg.printf("Invalid temp provided for compensation: %f\n", tempC);
                 this->waterTempC = 25;
             } else {

@@ -11,12 +11,6 @@
             virtual void readDefaultConfig(GrowbotConfig* config) {
                 config->exhaustFanPercent = 100;
                 config->intakeFanPercent = 100;
-                config->controlWaterLevelCalibration.emptyCm = 14;
-                config->controlWaterLevelCalibration.fullCm = 4;
-                for (int i = 0; i < NUM_BUCKETS; i++) {
-                    config->bucketWaterLevelCalibration[i].emptyCm = 14;
-                    config->bucketWaterLevelCalibration[i].fullCm = 4;
-                }
                 config->exhaustFanCalibration.maxOffset = 30;
                 config->exhaustFanCalibration.minOffset = 1;
                 config->intakeFanCalibration.maxOffset = 30;

@@ -42,13 +42,13 @@
                 NULL)
             
 
-#define MAKEWATERLEVEL(NAME, MXPORT, CONFIGPROP) new SensorHolder(\
+#define MAKEWATERLEVEL(NAME, MXPORT) new SensorHolder(\
                 new WaterLevel(I2COBJ, i2cMultiplexer, MXPORT),\
                 {new ReadingNormalizer(#NAME, 10, 3, .5f, 0, 100)},\
                 #NAME,\
                 1,\
                 { &this->data->NAME },\
-                &this->config->CONFIGPROP)
+                NULL)
 
 #define MAKEWATERTEMP(NAME, TYPE, ADDR) new SensorHolder(\
                 new TYPE(ADDR), \
@@ -120,7 +120,7 @@ class Sensorama {
 
            //control bucket sensors
            this->sensors.push_back(MAKEWATERTEMP(controlBucket.temperatureC, DallasWaterTempSensor, WT_CONTROL_BUCKET_ADDRESS));
-           this->sensors.push_back(MAKEWATERLEVEL(controlBucket.waterLevelPercent, CONTROL_WATER_LEVEL_MX_PORT, controlWaterLevelCalibration));
+           this->sensors.push_back(MAKEWATERLEVEL(controlBucket.waterLevelPercent, CONTROL_WATER_LEVEL_MX_PORT));
 
            //light sensors
            this->sensors.push_back(MAKELUX(luxAmbient1, 15));

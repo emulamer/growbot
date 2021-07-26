@@ -135,27 +135,25 @@ int operating_mode = GROWBOT_MODE_NORMAL;
 void updateFromConfig() {
 
   sensorama.configChanged();
-  for (int i = 0; i < 3; i++) {
   //set power calibration
-    powerCtl.setPowerCalibration(POWER_EXHAUST_FAN_PORT, config.exhaustFanCalibration, false);
-    delay(50);
-    powerCtl.setPowerCalibration(POWER_INTAKE_FAN_PORT, config.intakeFanCalibration, false);
-    delay(50);
-    
+  powerCtl.setPowerCalibration(POWER_EXHAUST_FAN_PORT, config.exhaustFanCalibration, false);
+  delay(50);
+  powerCtl.setPowerCalibration(POWER_INTAKE_FAN_PORT, config.intakeFanCalibration, false);
+  delay(50);
+  
 
-    //set on/off toggles
-    powerCtl.setPowerToggle(POWER_EXHAUST_FAN_PORT, config.exhaustFanOn);
-    delay(50);
-    powerCtl.setPowerToggle(POWER_INTAKE_FAN_PORT, config.intakeFanOn);
-    delay(50);
+  //set on/off toggles
+  powerCtl.setPowerToggle(POWER_EXHAUST_FAN_PORT, config.exhaustFanOn);
+  delay(50);
+  powerCtl.setPowerToggle(POWER_INTAKE_FAN_PORT, config.intakeFanOn);
+  delay(50);
 
-    //set power levels
-    powerCtl.setChannelLevel(POWER_EXHAUST_FAN_PORT, config.exhaustFanPercent);
-    delay(50);
-    powerCtl.setChannelLevel(POWER_INTAKE_FAN_PORT, config.intakeFanPercent);
-    delay(50);
-  }
-}
+  //set power levels
+  powerCtl.setChannelLevel(POWER_EXHAUST_FAN_PORT, config.exhaustFanPercent);
+  delay(50);
+  powerCtl.setChannelLevel(POWER_INTAKE_FAN_PORT, config.intakeFanPercent);
+  delay(50);
+ }
 
 #ifdef ARDUINO_ARCH_ESP32
 void reset_system()
@@ -380,7 +378,7 @@ void setup() {
   nvStore.init();
   dbg.println("Growbot v.01 starting up...");
   setupIO();
-  delay(6000);
+  delay(3000);
   powerCtl.init();
   dbg.print("Loading config...");
   nvStore.readConfig(&config);
@@ -399,6 +397,9 @@ void setup() {
 
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH);
+  delay(2000);
+  sensorama.update();
+  delay(1000);
 }
 unsigned long nextTick = 0;
 bool tickNow() {

@@ -20,15 +20,16 @@ if (process.argv.length > 2 && process.argv[2] == "ws") {
   var socket = new WebSocket('ws://growbot-doser:8118');
   socket.binaryType = 'arraybuffer';
   socket.onmessage = (msg) => {
-    console.log("got message: " + msg.data.toString());
+    console.log("got message");
+    console.log(msg.data);
   }
-  socket.onopen(e => {
+  socket.onopen = e => {
     console.log("onopen");
     var bytes = new Uint8Array(2);
     bytes[0] = 0xB1;
     bytes[1] = 0;
     socket.send(bytes);
-  })
+  }
 }
 if (process.argv.length > 2 && process.argv[2] == "doser") {
   server.bind(44445);  

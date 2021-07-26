@@ -8,20 +8,13 @@
 #ifndef WATERLEVEL_H
 #define WATERLEVEL_H
 
-#define ULTRASONIC_I2C_ADDR 0x59
-#define ULTRASONIC_NUM_SAMPLES 5
-#define ULTRASONIC_MIN_VALID 1
-#define ULTRASONIC_MAX_VALID 500
-#define ULTRASONIC_READ_DELAY_MS 120
+#define WATERLEVEL_I2C_ADDR 0x59
 
 
 class WaterLevel : public SensorBase
 {
     private:
         TwoWire* _wire;
-        
-        int m_emptyCm, m_fullCm;
-        int m_range;
         I2CMultiplexer* plexer;
         int busNum;
         bool isMultiplexer;
@@ -30,31 +23,58 @@ class WaterLevel : public SensorBase
                 this->plexer->setBus(this->busNum);
             }
         }
+        int readSensorPositionIndex() {
+            this->doPlex();
+            int readnum = this->_wire->requestFrom(WATERLEVEL_I2C_ADDR, 4);
+            if (readnum != 4) {
+                dbg.printf("Water level failed to request 4 bytes from sensor, result: %d!\n", readnum);
+                return -1;
+            }
+            //oops, 32u4 is 16 bit ints i guess
+            int16_t someBytes[2] = {-1,-1};
+            size_t bytesRead = this->_wire->readBytes((byte*)someBytes, 4);
+            if (bytesRead != 4) {
+                dbg.printf("Water level read %d bytes instead of 4!\n", bytesRead);
+                return -1;
+            }
+            int16_t aRead = someBytes[0];
+            
+            if (aRead <= 0 || aRead >= 1023) {
+                dbg.printf("Water level read invalid value: %d\n", aRead);
+                return -1;
+            }
+            int idx = -1;
 
+            if (aRead > 250) {//empty, usually ~260-273 
+                idx = 0;
+            } else if (aRead > 200) {
+                idx = 1;
+            } else if (aRead > 170) {
+                idx = 2;
+            } else if (aRead > 150) {
+                idx = 3;
+            } else if (aRead > 130) {
+                idx = 4;
+            } else if (aRead > 120) {
+                idx = 5;
+            } else if (aRead > 100) {
+                idx = 6;
+            } else if (aRead > 90) {
+                idx = 7;
+            } else if (aRead > 60) {
+                idx = 8;
+            } else  { //if (aRead > 40) {
+                idx = 9;
+            }
+            return idx;
+        }
     public:
         WaterLevel(TwoWire* wire) {
             this->_wire = wire;
-            this->m_fullCm = 1;
-            this->m_emptyCm = 100;
-            this->m_range = 100;
             this->isMultiplexer = false;
-        }
-        WaterLevel(TwoWire* wire, WaterLevelCalibration calibration) {
-            this->_wire = wire;
-            this->isMultiplexer = false;
-            this->setCalibration(calibration);
         }
         WaterLevel(TwoWire* wire, I2CMultiplexer* multiplexer, int multiplexer_bus) {
             this->_wire = wire;
-            this->m_fullCm = 1;
-            this->m_emptyCm = 100;
-            this->m_range = 100;
-            this->isMultiplexer = true;
-            this->plexer = multiplexer;
-            this->busNum = multiplexer_bus;
-        }
-        WaterLevel(TwoWire* wire, I2CMultiplexer* multiplexer, int multiplexer_bus, WaterLevelCalibration calibration) {
-            this->setCalibration(calibration);
             this->isMultiplexer = true;
             this->plexer = multiplexer;
             this->busNum = multiplexer_bus;
@@ -63,78 +83,71 @@ class WaterLevel : public SensorBase
 
         }
         void reconfigure(void* configAddr) {
-            setCalibration(*((WaterLevelCalibration*)configAddr));
-        }
-
-        void setCalibration(WaterLevelCalibration calibration) {
-            this->m_fullCm = calibration.fullCm;
-            this->m_emptyCm = calibration.emptyCm;
-            this->m_range = calibration.emptyCm - calibration.fullCm;
         }
         DeferredReading startRead() {
             DeferredReading reading;
-            reading.isComplete = false;
-            reading.isSuccessful = false;
+            reading.isComplete = true;
             reading.readingCount = 1;
+            reading.deferUntil = 0;
             reading.values[0] = NAN;
 
-            this->doPlex();
-            delay(50);
-            this->_wire->beginTransmission(ULTRASONIC_I2C_ADDR);
-            this->_wire->write(5);
-            dbg.printf("water level read end: %d\n", this->_wire->endTransmission() );
-            reading.deferUntil = millis() + 1000;
-
+            int floatPos = this->readSensorPositionIndex();
+            if (floatPos < 0 || floatPos > 9) {
+                reading.isSuccessful = false;
+                dbg.printf("Water Level: Bad sensor position index %d\n", floatPos);
+                return reading;
+            }
+            switch (floatPos) {
+                case 0:
+                    reading.isSuccessful = true;
+                    reading.values[0] = 0;
+                    break;
+                case 1:
+                    reading.isSuccessful = true;
+                    reading.values[0] = 10;
+                    break;
+                case 2:
+                    reading.isSuccessful = true;
+                    reading.values[0] = 20;
+                    break;
+                case 3:
+                    reading.isSuccessful = true;
+                    reading.values[0] = 30;
+                    break;
+                case 4:
+                    reading.isSuccessful = true;
+                    reading.values[0] = 40;
+                    break;
+                case 5:
+                    reading.isSuccessful = true;
+                    reading.values[0] = 50;
+                    break;
+                case 6:
+                    reading.isSuccessful = true;
+                    reading.values[0] = 60;
+                    break;
+                case 7:
+                    reading.isSuccessful = true;
+                    reading.values[0] = 75;
+                    break;
+                case 8:
+                    reading.isSuccessful = true;
+                    reading.values[0] = 90;
+                    break;
+                case 9:
+                    reading.isSuccessful = true;
+                    reading.values[0] = 100;
+                    break;
+                default:
+                    reading.isSuccessful = false;
+                    dbg.printf("Water Level: Bad sensor position index %d\n", floatPos);
+                    break;
+            }
+            
             return reading;
         }
         void finishRead(DeferredReading &reading) {
-            this->doPlex();
-            int readnum = this->_wire->requestFrom(ULTRASONIC_I2C_ADDR, 4);
-            if (readnum != 4) {
-                dbg.printf("WaterLevel: Failed to read 4 bytes from sensor, got %d!\n", readnum);
-                reading.isComplete = true;
-                reading.isSuccessful = false;
-                reading.values[0] = NAN;
-                return;
-            }
-            uint8_t distBytes[4];
-            distBytes[0] = 0;
-            distBytes[1] = 0;
-            distBytes[2] = 0;
-            distBytes[3] = 0;
-            int i = 0;
-            while (this->_wire->available()) {
-                int val = this->_wire->read();
-                dbg.printf("read byte: %d\n", val);
-                distBytes[i++] = val;
-            }
-            float distance = *((float*)distBytes);
-
-         dbg.printf("read cm distance of %f\n", distance);
-            if (distance < ULTRASONIC_MIN_VALID || distance > ULTRASONIC_MAX_VALID || isnan(distance)) {
-                dbg.printf("WaterLevel: bad number read from sensor: %f\n", distance);
-                reading.values[0] = NAN;
-                reading.isSuccessful = false;
-                reading.isComplete = false;
-            } else {
-                auto cmDist = distance;
-                if (cmDist == NAN) {
-                    reading.values[0] = NAN;
-                    reading.isSuccessful = false;
-                } else if (cmDist < (unsigned long)this->m_fullCm) {
-                    reading.values[0] = 100;
-                    reading.isSuccessful = true;
-                } else if (cmDist > (unsigned long)this->m_emptyCm) {
-                    reading.values[0] = 0;
-                    reading.isSuccessful = true;
-                } else {
-                    float offs = cmDist - this->m_fullCm;
-                    float pct = 100 - ((offs* 100) / (float)(this->m_range));
-                    reading.values[0] = pct;
-                    reading.isSuccessful = true;
-                }
-            }
-            reading.isComplete = true;
+           //nothing to do here
         }
 };
 

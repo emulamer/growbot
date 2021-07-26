@@ -52,6 +52,7 @@
 /* dispensing has started
   format:
       [0]: port number
+      [1-4]: how many ML is being dispensed
 */
 #define RSP_DISPENSE_START 0x01
 
@@ -159,12 +160,16 @@ void startDispenseForMS(byte port, int millisec) {
   portTimers[port].startStamp = millis();
   portTimers[port].millisecs = millisec;
   portTimers[port].running = true;
-  byte msg[2] = {
+  float dispenseAmount = millisec * portCalibrations[port] / 1000;
+  byte msg[6] = {
     RSP_DISPENSE_START,
     port
   };
+  msg[0] = RSP_DISPENSE_START;
+  msg[1] = port;
+  memcpy(msg + 2, &dispenseAmount, 4);
   setPort(port, true);
-  webSocket.broadcastBIN(msg, 2);
+  webSocket.broadcastBIN(msg, 6);
 }
 
 
