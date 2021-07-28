@@ -1,0 +1,17 @@
+{
+  "name": "growcams",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bufferutil": "^4.0.3",
+    "express": "^4.17.1",
+    "mp4frag": "^0.4.2",
+    "ws": "^7.5.3"
+  }
+}
