@@ -21,8 +21,12 @@
                 config->samplingIntervalMS = 10000;
                 config->exhaustFanOn = true;
                 config->intakeFanOn = true;
-                config->overheadLightsOn = true;
-                config->sideLightsOn = true;
+                config->roomFanSchedule.status = 2;
+                config->roomFanSchedule.turnOffGmtHourMin = 0;
+                config->roomFanSchedule.turnOnGmtHourMin = 0;
+                config->lightSchedule.status = 2;
+                config->lightSchedule.turnOffGmtHourMin = 0;
+                config->lightSchedule.turnOnGmtHourMin = 0;                
             }
     };
 

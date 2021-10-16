@@ -49,6 +49,10 @@ class Switcheroo {
         void init() {
             getPowerFlags();
         }
+        bool getPowerToggle(byte portNum) {
+            byte flag = 1<<portNum;
+            return (flag & this->powerFlags) != 0;
+        }
         bool setPowerToggle(byte portNum, bool on) {
             byte flag = 1<<portNum;
             if (on) {

@@ -1,7 +1,7 @@
 var spawn = require('child_process').spawn;
 const express = require('express')
 var cors = require('cors')
-
+const m2j = require('mjpeg2jpegs');
 const path = require('path')
 const fs = require('fs');
 const net = require('net');
@@ -31,8 +31,8 @@ function getDeviceMap() {
                         console.error(e);
                 }
         }
-console.log("device map:");
-console.log(deviceMap);
+        console.log("device map:");
+        console.log(deviceMap);
         return deviceMap;
 }
 
@@ -44,37 +44,15 @@ function getDevForName(name) {
         return map[name];
 }
 
-function waitFileExists(filePath, timeout) {
-        if (!timeout) timeout = 5000;
-        return new Promise(function (resolve, reject) {
-            let startAt = Date.now();
-            var timer = null;
-            const timerFunc = () => {
-                    if (!fs.existsSync(filePath)) {
-                            if (Date.now() - startAt > timeout) {
-                                    reject();
-                            } else {
-                                    timer = setTimeout(timerFunc, 500);
-                            }
-                    } else {
-                            resolve();
-                    }
-            };
-            timerFunc();
-    });
-}
-
-
 
 class CamServe {
+        latestJpeg = null;
         app;
         v4l2DeviceName;
         ffmpeg = null;
         fps = null;
         camIndex = null;
         timeoutHandle = null;
-        tempDir = null;
-        httpM3U8Path = null;
         httpStreamPath = null;
         constructor(expressApp, v4l2DeviceName, camIndex, resolution, framerate) {
                 this.app = expressApp;
@@ -82,9 +60,7 @@ class CamServe {
                 this.res = resolution || "640x480";
                 this.fps = framerate || 25;
                 this.camIndex = camIndex;
-                this.tempDir = `/tmp/cam${this.camIndex}`;
-                this.httpM3U8Path = `/cams/${this.camIndex}/stream.m3u8`;
-                this.httpStreamPath = `/cams/${this.camIndex}/stream*.ts`;
+                this.httpStreamPath = `/cams/${this.camIndex}/jpg.jpg`;
         }
 
         resetTimeout() {
@@ -95,6 +71,7 @@ class CamServe {
         }
 
         timeoutShutdown() {
+                this.latestJpeg = null;
                 if (!this.ffmpeg) {
                         return;
                 }
@@ -104,50 +81,39 @@ class CamServe {
         }
 
         start() {
-
-                this.app.get(this.httpM3U8Path, async (req, res) => {
-
-                        try {
-                                if (this.ffmpeg == null) {
-                                        await this.startFfmpeg();
-                                }
-                                this.resetTimeout();
-
-                                await waitFileExists(`${this.tempDir}/stream.m3u8`);
-
-                                await waitFileExists(`${this.tempDir}/stream1.ts`);
-                                res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
-                                res.sendFile(`${this.tempDir}/stream.m3u8`);
-
-                        } catch (e) {
-                                console.error("Error getting ffmpeg going");
-                                console.error(e);
-                                res.sendStatus(500);
-                                return;
-                        }
-                });
-
                 this.app.get(this.httpStreamPath, async (req, res) => {
                         if (!this.ffmpeg) {
-                                res.sendStatus(404);
-                                return;
+                                this.startFfmpeg();
                         }
                         this.resetTimeout();
+                        let handle;
+                        let handle2;
+                        let doWaitForFile;
+                        doWaitForFile = () => {
+                                if (this.latestJpeg != null) {
+                                        clearTimeout(handle2);
+                                        res.status(200);
+                                        res.setHeader("Content-Type", "image/jpeg");
+                                        res.setHeader("Content-Length", this.latestJpeg.length);
 
-                        let file = `${this.tempDir}/${path.basename(req.path)}`
-                        try {
-                                await waitFileExists(file);
-                                res.setHeader('Content-Type', 'video/MP2T');
-                                res.sendFile(file);
-                        } catch (e) {
-                                console.error("Error getting stream");
-                                console.error(e);
+                                        res.write(this.latestJpeg);
+                                        res.end();
+                                        handle = null
+
+                                } else {
+                                        handle = setTimeout(() => {
+                                                doWaitForFile();
+                                        }, 100);
+                                }
+                        };
+                        handle2 = setTimeout(() => {if (handle != null) {
+                                clearTimeout(handle);
+                                handle = null;
                                 res.sendStatus(500);
                                 return;
-                        }
+                        }}, 1000);
+                        doWaitForFile();
                 });
-
-
         }
 
 
@@ -173,49 +139,53 @@ class CamServe {
         }
 
         async startFfmpeg() {
-try {
-                let devicePath = "/dev/" + getDevForName(this.v4l2DeviceName);
+                try {
+                        let devicePath = "/dev/" + getDevForName(this.v4l2DeviceName);
 
-                if (this.ffmpeg != null) {
-                        console.warn("tried to start ffmpeg but it is running!");
-                        return;
+                        if (this.ffmpeg != null) {
+                                console.warn("tried to start ffmpeg but it is running!");
+                                return;
+                        }
+                        var ffmpegargstr = `
+                        -f video4linux2
+                        -video_size ${this.res}
+                        -framerate ${this.fps}
+                        -i ${devicePath}
+                        -q:v 9
+                        -s ${this.res}
+                        -r ${this.fps}
+                        -f mjpeg
+                        pipe:1`
+                        var ffmpegargs = ffmpegargstr.replace(/\n/g, ' ').split(' ').filter(x=> x.trim().length > 0).map(x=> x.trim());
+                        console.log("launching ffmpeg with args:");
+                        console.log(ffmpegargs);
+                        this.ffmpeg = spawn('ffmpeg', ffmpegargs);
+
+
+                        this.ffmpeg.stderr.on('data', function(data) {
+                                console.log(data.toString());
+                        });
+                        let tmpBuffer = null;
+                        this.ffmpeg.stdout.on("data", d=> {
+                                //boy this sure is a half assed implementation of this
+                                let hasStart = (d.readUInt8(0) == 0xFF && d.readUInt8(1) == 0xd8);
+                                let hasEnd = (d.readUInt8(d.length - 2) == 0xFF && d.readUInt8(d.length - 1) == 0xd9);
+                                if (hasStart && !hasEnd) {
+                                        tmpBuffer = d;
+                                }
+                                else if (hasEnd && !hasStart && tmpBuffer) {
+                                        this.latestJpeg = Buffer.concat([tmpBuffer, d]);
+                                        tmpBuffer = null;
+                                } else if (!hasEnd && !hasStart && tmpBuffer) {
+                                        tmpBuffer = Buffer.concat([tmpBuffer, d]);
+                                } else if (hasStart && hasEnd) {
+                                        this.latestJpeg = d;
+                                }
+                        });
+                } catch (e) {
+                        console.log("errors starting ffmpeg");
+                        console.error(e);
                 }
-                if (fs.existsSync(this.tempDir)) {
-                        fs.rmSync(this.tempDir, {recursive: true});
-                }
-                console.log(`creating dir ${this.tempDir}`);
-                fs.mkdirSync(this.tempDir, {recursive: true});
-
-                var ffmpegargstr = `-f video4linux2 -video_size ${this.res} -framerate ${this.fps} ` +
-                                `-i ${devicePath} ` +
-                                `-c:v h264_omx ` +
-                                `-f hls ` +
-                                `-hls_wrap 4 ${this.tempDir}/stream.m3u8`;
-                var ffmpegargs = ffmpegargstr.split(' ');
-
-                console.log("launching ffmpeg with args:");
-                console.log(ffmpegargstr);
-                this.ffmpeg = spawn('ffmpeg', ffmpegargs, {stdio: ['ignore', 'pipe', 'pipe']});
-//console.log("should have launched");
-//              this.ffmpeg.stdout.setEncoding("utf8");
-//              this.ffmpeg.stdout.on('data', d=> {
-//                      console.log(d.toString());
-//              });
-//              this.ffmpeg.stderr.setEncoding("utf8");
-this.ffmpeg.stderr.on('data', function(data) {
-    console.log(data.toString());
-});
-//              this.ffmpeg.stderr.on('data', d=> {
-//                      console.error(d.toString());
-//              });
-//                this.ffmpeg.stdio.on('exit', () => {
-//                        console.log('ffmpeg exited');
-//                        this.killFfmpeg();
-//                });
-} catch (e) {
-console.log("errors starting ffmpeg");
-console.error(e);
-}
         }
 
 }
@@ -223,10 +193,8 @@ console.error(e);
 
 var app = express();
 app.use(cors());
-var cam1 = new CamServe(app, "GENERAL WEBCAM: GENERAL WEBCAM", 1, "1280x720", 30);
-var cam2 = new CamServe(app, "USB2.0 UVC PC Camera: USB2.0 UV", 2, "640x480", 25);
+var cam1 = new CamServe(app, "GENERAL WEBCAM: GENERAL WEBCAM", 1, "1280x720", 10);
+var cam2 = new CamServe(app, "USB2.0 UVC PC Camera: USB2.0 UV", 2, "640x480", 10);
 cam1.start();
 cam2.start();
 app.listen(8081);
-
-

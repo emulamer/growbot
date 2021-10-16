@@ -91,6 +91,9 @@ struct PortTimer {
 
 float portCalibrations[NUM_PORTS];
 
+#define WIFI_RECONNECT_DELAY 15000
+unsigned long reconnectWifiAt = 0;
+
 PortTimer portTimers[NUM_PORTS] = {
   {false, 0, 0}, {false, 0, 0}, {false, 0, 0}, {false, 0, 0}, {false, 0, 0}, {false, 0, 0}
 };
@@ -319,6 +322,9 @@ void wifi_event(system_event_t *sys_event, wifi_prov_event_t *prov_event) {
     dbg.wifiIsReady();
     dbg.printf("Got IP address\n");
   }
+  // if (sys_event->event_id == system_event_id_t::SYSTEM_EVENT_STA_DISCONNECTED) {
+  //   reconnectWifiAt = millis() + WIFI_RECONNECT_DELAY;
+  // }
 }
 void setup() {
   pinMode(CLOCK_PIN, OUTPUT);
@@ -339,6 +345,7 @@ void setup() {
 
   WiFi.onEvent(wifi_event);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  WiFi.setAutoReconnect(true);
 
   
   dbg.println("Setting up OTA...");
@@ -377,6 +384,10 @@ void setup() {
 void loop() {
   webSocket.loop();
   ArduinoOTA.handle();
+  if (!WiFi.isConnected() && reconnectWifiAt < millis()) {
+    reconnectWifiAt = millis() + WIFI_RECONNECT_DELAY;
+    WiFi.reconnect();
+  }
 
   for (int i = 0; i < NUM_PORTS; i++) {
     if (!portTimers[i].running) {

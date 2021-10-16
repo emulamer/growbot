@@ -9,13 +9,14 @@
 #define MQTT_PORT 1883
 #define MQTT_TOPIC "GROWBOT"
 #define MQTT_CONFIG_TOPIC "GROWBOT_CONFIG"
+#define GMT_OFFSET -5
 
 
 // #define PH_ENABLE_PIN 14
 // #define TDS_ENABLE_PIN 15
 
 // version of the GrowbotConfig in eeprom, change if GrowbotConfic struct changes
-#define CONFIG_VERSION 6
+#define CONFIG_VERSION 8
 
 #define NUM_BUCKETS 0
 

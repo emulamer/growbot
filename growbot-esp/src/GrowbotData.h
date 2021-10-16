@@ -11,6 +11,12 @@ struct WaterData {
     float tds;
 }; 
 
+struct SwitchSchedule {
+    int status; //0 = use schedule, 1 = force on, 2 = force off
+    int turnOnGmtHourMin;
+    int turnOffGmtHourMin;
+};
+
 struct BucketData {
     float temperatureC;
     float waterLevelPercent;
@@ -45,18 +51,17 @@ struct FixedThermostatSetting : public ThermostatSetting {
 
 struct GrowbotConfig {
     int exhaustFanPercent;
-    int intakeFanPercent;
-    int roomFansPercent;
+    int intakeFanPercent;           
     //these are bit flags for on/off for various things
-    bool exhaustFanOn;
-    bool intakeFanOn;
-    bool roomFansOn;
-    bool overheadLightsOn;
-    bool sideLightsOn;
-    PowerControlCalibration exhaustFanCalibration;
-    PowerControlCalibration intakeFanCalibration;
+    bool exhaustFanOn;      
+    bool intakeFanOn;       
+    //2 padding
+    PowerControlCalibration exhaustFanCalibration;  //12
+    PowerControlCalibration intakeFanCalibration;   //12
     int samplingIntervalMS;
-    FixedThermostatSetting waterChillerThermostat;
+    FixedThermostatSetting waterChillerThermostat; //12
+    SwitchSchedule lightSchedule;   //12    
+    SwitchSchedule roomFanSchedule; //12
 };
 
 
@@ -78,7 +83,9 @@ struct GrowbotData {
     WaterData waterData;
     BucketData controlBucket;
     float waterChillerStatus;
-    BucketData buckets[DATA_BUCKET_COUNT];    
+    bool lightsOn;
+    bool roomFanOn;
+    BucketData buckets[DATA_BUCKET_COUNT];
 };
 
 struct GrowbotState {

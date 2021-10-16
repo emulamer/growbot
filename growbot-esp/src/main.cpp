@@ -18,6 +18,7 @@
 #include "perhip/PowerControl.h"
 #include "Thermostat.h"
 #include "perhip/Switcheroo.h"
+#include "TimeKeeper.h"
 #ifdef ARDUINO_ARCH_ESP32
 #include <ArduinoOTA.h>
 #include "soc/rtc_wdt.h"
@@ -70,18 +71,38 @@ TwoWire* i2cBus2 = &Wire1;
 I2CMultiplexer i2cMultiplexer(i2cBus, i2cBus2, I2C_MULTIPLEXER2_ADDRESS);
 PowerControl powerCtl(i2cBus, I2C_POWER_CTL_ADDR);
 Switcheroo* switcheroo = new Switcheroo(i2cBus2, &i2cMultiplexer, 9);
+TimeKeeper* lightsTimekeeper = new TimeKeeper(switcheroo, 1, &config.lightSchedule, &data.lightsOn);
+TimeKeeper* roomFansTimekeeper = new TimeKeeper(switcheroo, 2, &config.roomFanSchedule, &data.roomFanOn);
 #endif
 
 FixedThermostat chillerThermostat;
+int operating_mode = GROWBOT_MODE_NORMAL;
 
+
+void sendState() {
+    state.config = config;
+    state.data = data;
+    state.current_mode = operating_mode;
+    if (!dataConn.sendState(state)) {
+      dbg.printf("State was not sent!\n");
+    }
+    dbg.printf("sending state, lights flag is: %d\n", state.data.lightsOn);
+}
 
 void doImportantTicks() {
+  bool doSendState = false;
   #if ARDUINO_ARCH_ESP32
   ArduinoOTA.handle();
   wifiMgr.handle();
+  
+  doSendState = doSendState || lightsTimekeeper->handle();
+  doSendState = doSendState || roomFansTimekeeper->handle();
   #endif
   powerCtl.handle();
   dataConn.handle();
+  if (doSendState) {
+    sendState();
+  }
 }
 
 void debug_scan_i2c(TwoWire *wire, I2CMultiplexer* plex) {
@@ -130,7 +151,7 @@ void debug_scan_i2c(TwoWire *wire, I2CMultiplexer* plex) {
 }
 Sensorama sensorama = Sensorama(i2cBus, i2cBus2, &i2cMultiplexer, &data, &config, doImportantTicks);
 
-int operating_mode = GROWBOT_MODE_NORMAL;
+
 
 void updateFromConfig() {
 
@@ -153,6 +174,10 @@ void updateFromConfig() {
   delay(50);
   powerCtl.setChannelLevel(POWER_INTAKE_FAN_PORT, config.intakeFanPercent);
   delay(50);
+
+  //set schedules
+  lightsTimekeeper->handle(true);
+  roomFansTimekeeper->handle(true);
  }
 
 #ifdef ARDUINO_ARCH_ESP32
@@ -172,16 +197,10 @@ void reset_system() {
 }
 #endif
 
-void sendState() {
-    state.config = config;
-    state.data = data;
-    state.current_mode = operating_mode;
-    if (!dataConn.sendState(state)) {
-      dbg.printf("State was not sent!\n");
-    }
-}
+
 
 void onNewConfig(GrowbotConfig &newConfig) {
+  dbg.printf("got new config update!\n");
   config = newConfig;
   nvStore.writeConfig(config);
   updateFromConfig();
@@ -422,7 +441,7 @@ void loop() {
       sensorama.update();
       updateThermostats();
       sendState();
-      dbg.printf("Waiting to sample again for %d\n", config.samplingIntervalMS);
+      dbg.printf("Waiting to tick again for %d\n", config.samplingIntervalMS);
     }
   } else if (operating_mode == GROWBOT_MODE_CALIBRATING_PH_SENSOR ||
              operating_mode == GROWBOT_MODE_CALIBRATING_PH_SENSOR_SET_MID ||

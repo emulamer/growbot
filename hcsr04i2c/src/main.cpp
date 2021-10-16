@@ -1,21 +1,20 @@
 #include <Arduino.h>
 #include <Wire.h>
 #define I2C_ADDR 0x59
-#define ANALOG_V_PIN 0
-#define R1_OHMS 668
+#define ANALOG_V_PIN A6
 
-#define FLOAT_MIN_OHMS 35.0
-#define FLOAT_MAX_OHMS 240.0
 
-#define SAMPLE_INTERVAL 250
+#define SAMPLE_INTERVAL 1000
 
 unsigned long lastReadStamp = 0;
 
 int rawAnalogRead = -1;
 
 void requestEvent() {
-  //TODO: this thing's only 2 bytes, fix it coordinated with changes to the esp code
-  Wire.write((char *)&rawAnalogRead, 4);
+  uint32_t read = analogRead(ANALOG_V_PIN);
+  Serial.print("Raw read: ");
+  Serial.println(read);
+  Wire.write((char *)&read, 4);
 }
 void setup() {
   Serial.begin(9600);
@@ -26,10 +25,10 @@ void setup() {
 
 void loop()
 {
-  if (millis() - lastReadStamp > SAMPLE_INTERVAL) {
-    rawAnalogRead = analogRead(ANALOG_V_PIN);
-    Serial.print("Raw analog: ");
-    Serial.println(rawAnalogRead);
+   if (millis() - lastReadStamp > SAMPLE_INTERVAL) {
+    uint32_t read = analogRead(ANALOG_V_PIN);
+    Serial.print("Raw read: ");
+    Serial.println(read);
     lastReadStamp = millis();
   }
 

@@ -10,6 +10,8 @@
 
 #define WATERLEVEL_I2C_ADDR 0x59
 
+#define MIN_VAL 604
+#define MAX_VAL 804
 
 class WaterLevel : public SensorBase
 {
@@ -22,51 +24,6 @@ class WaterLevel : public SensorBase
             if (this->isMultiplexer) {
                 this->plexer->setBus(this->busNum);
             }
-        }
-        int readSensorPositionIndex() {
-            this->doPlex();
-            int readnum = this->_wire->requestFrom(WATERLEVEL_I2C_ADDR, 4);
-            if (readnum != 4) {
-                dbg.printf("Water level failed to request 4 bytes from sensor, result: %d!\n", readnum);
-                return -1;
-            }
-            //oops, 32u4 is 16 bit ints i guess
-            int16_t someBytes[2] = {-1,-1};
-            size_t bytesRead = this->_wire->readBytes((byte*)someBytes, 4);
-            if (bytesRead != 4) {
-                dbg.printf("Water level read %d bytes instead of 4!\n", bytesRead);
-                return -1;
-            }
-            int16_t aRead = someBytes[0];
-            
-            if (aRead <= 0 || aRead >= 1023) {
-                dbg.printf("Water level read invalid value: %d\n", aRead);
-                return -1;
-            }
-            int idx = -1;
-
-            if (aRead > 250) {//empty, usually ~260-273 
-                idx = 0;
-            } else if (aRead > 200) {
-                idx = 1;
-            } else if (aRead > 170) {
-                idx = 2;
-            } else if (aRead > 150) {
-                idx = 3;
-            } else if (aRead > 130) {
-                idx = 4;
-            } else if (aRead > 120) {
-                idx = 5;
-            } else if (aRead > 100) {
-                idx = 6;
-            } else if (aRead > 90) {
-                idx = 7;
-            } else if (aRead > 60) {
-                idx = 8;
-            } else  { //if (aRead > 40) {
-                idx = 9;
-            }
-            return idx;
         }
     public:
         WaterLevel(TwoWire* wire) {
@@ -89,61 +46,44 @@ class WaterLevel : public SensorBase
             reading.isComplete = true;
             reading.readingCount = 1;
             reading.deferUntil = 0;
-            reading.values[0] = NAN;
-
-            int floatPos = this->readSensorPositionIndex();
-            if (floatPos < 0 || floatPos > 9) {
+            this->doPlex();
+            int readnum = this->_wire->requestFrom(WATERLEVEL_I2C_ADDR, 4);
+            if (readnum != 4) {
+                dbg.printf("Water level failed to request 4 bytes from sensor, result: %d!\n", readnum);
                 reading.isSuccessful = false;
-                dbg.printf("Water Level: Bad sensor position index %d\n", floatPos);
+                reading.values[0] = NAN;
                 return reading;
             }
-            switch (floatPos) {
-                case 0:
-                    reading.isSuccessful = true;
-                    reading.values[0] = 0;
-                    break;
-                case 1:
-                    reading.isSuccessful = true;
-                    reading.values[0] = 10;
-                    break;
-                case 2:
-                    reading.isSuccessful = true;
-                    reading.values[0] = 20;
-                    break;
-                case 3:
-                    reading.isSuccessful = true;
-                    reading.values[0] = 30;
-                    break;
-                case 4:
-                    reading.isSuccessful = true;
-                    reading.values[0] = 40;
-                    break;
-                case 5:
-                    reading.isSuccessful = true;
-                    reading.values[0] = 50;
-                    break;
-                case 6:
-                    reading.isSuccessful = true;
-                    reading.values[0] = 60;
-                    break;
-                case 7:
-                    reading.isSuccessful = true;
-                    reading.values[0] = 75;
-                    break;
-                case 8:
-                    reading.isSuccessful = true;
-                    reading.values[0] = 90;
-                    break;
-                case 9:
-                    reading.isSuccessful = true;
-                    reading.values[0] = 100;
-                    break;
-                default:
-                    reading.isSuccessful = false;
-                    dbg.printf("Water Level: Bad sensor position index %d\n", floatPos);
-                    break;
+            //oops, 32u4 is 16 bit ints i guess
+            uint32_t val = 0;
+            size_t bytesRead = this->_wire->readBytes((byte*)&val, 4);
+            if (bytesRead != 4) {
+                dbg.printf("Water level read %d bytes instead of 4!\n", bytesRead);
+                reading.isSuccessful = false;
+                reading.values[0] = NAN;
+                return reading;
             }
+            dbg.printf("WATERLEVEL READ VAL %d\n", val);
             
+            //sanity check
+            if (val < 400 || val > 1000) {
+                dbg.printf("Water level read invalid value: %d\n", val);
+                reading.isSuccessful = false;
+                reading.values[0] = NAN;
+                return reading;
+            } else if (val <= MIN_VAL) {
+                dbg.printf("Water level read value under min %d: %d\n", MIN_VAL, val);
+                reading.values[0] = 100;
+            } else if (val >= MAX_VAL) {
+                dbg.printf("Water level read value over max %d: %d\n", MAX_VAL, val);
+                reading.values[0] = 0;
+            } else {
+                float range = MAX_VAL - MIN_VAL;
+                float pctEmpty = val;
+                pctEmpty = 100 - (((pctEmpty - MIN_VAL)/range)*100);
+                reading.values[0] = pctEmpty;
+            }
+            reading.isSuccessful = true;
             return reading;
         }
         void finishRead(DeferredReading &reading) {

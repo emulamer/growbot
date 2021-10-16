@@ -11,12 +11,12 @@
 class MQTTDataConnection : public DataConnection {
     private:
         AsyncMqttClient mqttClient;
-        Ticker mqttReconnectTimer;
+        //Ticker mqttReconnectTimer;
         const char* mqttPublishTopic;
         const char* mqttListenTopic;
         const char* mqttHost;
         short mqttPort;
-
+        unsigned long reconnectAt = -1;
         void reconnectTimerTick() {
             reconnectTimerSet = false;
             if (!WiFi.isConnected()) {
@@ -87,7 +87,8 @@ class MQTTDataConnection : public DataConnection {
             if (!reconnectTimerSet) {
                 dbg.printf("Starting reconnect timer...\n");
                 reconnectTimerSet = true;
-                this->mqttReconnectTimer.once(2, +[](MQTTDataConnection* instance) { instance->reconnectTimerTick(); }, this);
+                reconnectAt = millis() + 2000;
+                //this->mqttReconnectTimer.once(2, +[](MQTTDataConnection* instance) { instance->reconnectTimerTick(); }, this);
             } else {
                 dbg.printf("Reconnect timer already set.\n");
             }
@@ -138,7 +139,13 @@ class MQTTDataConnection : public DataConnection {
             this->mqttHost = host;
             this->mqttPort = port;
         }
-        void handle() {}
+        void handle() {
+            if (this->reconnectTimerSet && this->reconnectAt <= millis()) {
+                this->reconnectTimerTick();
+                this->reconnectTimerSet = false;
+            }
+
+        }
         void init() {
             WiFi.onEvent(std::bind(&MQTTDataConnection::onWifiConnect, this,  std::placeholders::_1, std::placeholders::_2), SYSTEM_EVENT_STA_GOT_IP);
             this->mqttClient.onConnect(std::bind(&MQTTDataConnection::onMqttConnect, this,  std::placeholders::_1));
