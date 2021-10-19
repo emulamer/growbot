@@ -7,7 +7,7 @@
 
 #define SWITCHEROO_I2C_ADDR 0x28
 
-class Switcheroo {
+class SwitcherooI2C {
     private: 
         I2CMultiplexer* plexer;
         int busNum;
@@ -36,13 +36,13 @@ class Switcheroo {
             return true;
         }
     public:
-        Switcheroo(TwoWire* wire, I2CMultiplexer* multiplexer, int multiplexer_bus) {
+        SwitcherooI2C(TwoWire* wire, I2CMultiplexer* multiplexer, int multiplexer_bus) {
             this->plexer = multiplexer;
             this->busNum = multiplexer_bus;
             this->isMultiplexer = true;
             this->_wire = wire;
         }
-        Switcheroo(TwoWire* wire) {
+        SwitcherooI2C(TwoWire* wire) {
             this->isMultiplexer = false;
             this->_wire = wire;
         }

@@ -3,7 +3,7 @@
 #include <WiFiUdp.h>
 #include <WiFi.h>
 #include "GrowbotData.h"
-#include "perhip/Switcheroo.h"
+#include "perhip/SwitcherooWiFi.h"
 #include "DebugUtils.h"
 
 #ifndef TIMEKEEPER_H
@@ -18,7 +18,7 @@ class TimeKeeper {
         static NTPClient* timeClient;
         bool* onFlag;
         byte portNum;
-        Switcheroo* switcher;
+        SwitcherooWiFi* switcher;
         SwitchSchedule* schedule;
         unsigned long nextTick = 0;
         bool tickNow() {
@@ -30,7 +30,7 @@ class TimeKeeper {
             return false;
         }
     public:
-        TimeKeeper(Switcheroo* switcher, byte portNum, SwitchSchedule* schedule, bool* onFlag) {
+        TimeKeeper(SwitcherooWiFi* switcher, byte portNum, SwitchSchedule* schedule, bool* onFlag) {
             this->switcher = switcher;
             this->portNum = portNum;
             this->schedule = schedule;

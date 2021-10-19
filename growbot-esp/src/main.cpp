@@ -17,8 +17,8 @@
 #include "perhip/TempHumiditySensor.h"
 #include "perhip/PowerControl.h"
 #include "Thermostat.h"
-#include "perhip/Switcheroo.h"
-#include "TimeKeeper.h"
+#include "perhip/SwitcherooWiFi.h"
+#include "TimeKeeper.h" 
 #ifdef ARDUINO_ARCH_ESP32
 #include <ArduinoOTA.h>
 #include "soc/rtc_wdt.h"
@@ -70,7 +70,7 @@ TwoWire* i2cBus = &Wire;
 TwoWire* i2cBus2 = &Wire1;
 I2CMultiplexer i2cMultiplexer(i2cBus, i2cBus2, I2C_MULTIPLEXER2_ADDRESS);
 PowerControl powerCtl(i2cBus, I2C_POWER_CTL_ADDR);
-Switcheroo* switcheroo = new Switcheroo(i2cBus2, &i2cMultiplexer, 9);
+SwitcherooWiFi* switcheroo = new SwitcherooWiFi("growbot-switcheroo");
 TimeKeeper* lightsTimekeeper = new TimeKeeper(switcheroo, 1, &config.lightSchedule, &data.lightsOn);
 TimeKeeper* roomFansTimekeeper = new TimeKeeper(switcheroo, 2, &config.roomFanSchedule, &data.roomFanOn);
 #endif

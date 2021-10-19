@@ -84,7 +84,7 @@ class DallasWaterTempSensor : public SensorBase {
             reading.isSuccessful = false;
             reading.values[0] = NAN;
             reading.readingCount = 1;
-            reading.deferUntil = millis() + 1200;
+            reading.deferUntil = millis() + 700;
             if (!this->isOk) {
                 this->init();
             }
@@ -95,21 +95,23 @@ class DallasWaterTempSensor : public SensorBase {
                 reading.deferUntil = 0;
                 this->isOk = false;
             } else  {
-                if (!dallasTemp->requestTemperaturesByAddress(this->addr)) {
-                    //dallasTemp->requestTemperatures();
-                    dbg.println("failed to request water temp sensor one time");
-                    delay(100);
-                    if (!dallasTemp->requestTemperaturesByAddress(this->addr)) {
-                        dbg.println("failed to request water temp sensor a second time");
-                    }
-                //I don't know why this takes twice, I think maybe I got some cheap knockoffs
+                dallasTemp->requestTemperatures();
                 // if (!dallasTemp->requestTemperaturesByAddress(this->addr)) {
-                //     dbg.printf("Failed to request temperature from Dallas sensor at address %x %x %x %x %x %x %x %x !\n", this->addr[0], this->addr[1], this->addr[2], this->addr[3], this->addr[4], this->addr[5], this->addr[6], this->addr[7]);
-                //     this->isOk = false;
-                //     reading.isComplete = true;
-                //     reading.isSuccessful = false;
-                //     reading.deferUntil = 0;
-                }
+                    
+                //     //dallasTemp->requestTemperatures();
+                //     dbg.println("failed to request water temp sensor one time");
+                //     delay(100);
+                //     if (!dallasTemp->requestTemperaturesByAddress(this->addr)) {
+                //         dbg.println("failed to request water temp sensor a second time");
+                //     }
+                // //I don't know why this takes twice, I think maybe I got some cheap knockoffs
+                // // if (!dallasTemp->requestTemperaturesByAddress(this->addr)) {
+                // //     dbg.printf("Failed to request temperature from Dallas sensor at address %x %x %x %x %x %x %x %x !\n", this->addr[0], this->addr[1], this->addr[2], this->addr[3], this->addr[4], this->addr[5], this->addr[6], this->addr[7]);
+                // //     this->isOk = false;
+                // //     reading.isComplete = true;
+                // //     reading.isSuccessful = false;
+                // //     reading.deferUntil = 0;
+                // }
             }
             return reading;
         }
