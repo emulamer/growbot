@@ -73,7 +73,9 @@ class SwitcherooWiFi {
                     }
                 }                
             }
+            dbg.printf("Free heap: %d\n", ESP.getFreeHeap());
             this->http.end();
+            dbg.printf("Free heap: %d\n", ESP.getFreeHeap());
             return ok;
         }
     public:
@@ -118,7 +120,9 @@ class SwitcherooWiFi {
                 dbg.printf("Switcheroo: HTTP client GET to set the power flags succeeded\n");
                 ok = true;
             }
-            this->http.end();
+            
+            this->http.end();           
+            
             if (ok) {
                 this->lastGoodSendFlags = this->powerFlags;
             }

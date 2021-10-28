@@ -54,8 +54,9 @@ struct GrowbotConfig {
     int intakeFanPercent;           
     //these are bit flags for on/off for various things
     bool exhaustFanOn;      
-    bool intakeFanOn;       
-    //2 padding
+    bool intakeFanOn;
+    bool pumpOn;
+    //1 padding
     PowerControlCalibration exhaustFanCalibration;  //12
     PowerControlCalibration intakeFanCalibration;   //12
     int samplingIntervalMS;
@@ -85,6 +86,8 @@ struct GrowbotData {
     float waterChillerStatus;
     bool lightsOn;
     bool roomFanOn;
+    bool pumpOn;
+    bool pumpEmergencyShutoff;
     BucketData buckets[DATA_BUCKET_COUNT];
 };
 

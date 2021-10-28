@@ -26,6 +26,7 @@
 #include "WifiManager.h"
 #include "MQTTDataConnection.h"
 #include "EEPROMNVStore.h"
+#include "PumpControl.h"
 WifiManager wifiMgr(WIFI_SSID, WIFI_PASSWORD);
 MQTTDataConnection dataConn(MQTT_HOST, MQTT_PORT, MQTT_TOPIC, MQTT_CONFIG_TOPIC);
 EEPROMNVStore nvStore;
@@ -71,8 +72,9 @@ TwoWire* i2cBus2 = &Wire1;
 I2CMultiplexer i2cMultiplexer(i2cBus, i2cBus2, I2C_MULTIPLEXER2_ADDRESS);
 PowerControl powerCtl(i2cBus, I2C_POWER_CTL_ADDR);
 SwitcherooWiFi* switcheroo = new SwitcherooWiFi("growbot-switcheroo");
-TimeKeeper* lightsTimekeeper = new TimeKeeper(switcheroo, 1, &config.lightSchedule, &data.lightsOn);
-TimeKeeper* roomFansTimekeeper = new TimeKeeper(switcheroo, 2, &config.roomFanSchedule, &data.roomFanOn);
+TimeKeeper* lightsTimekeeper = new TimeKeeper(switcheroo, SWITCHEROO_LIGHTS_PORT, &config.lightSchedule, &data.lightsOn);
+TimeKeeper* roomFansTimekeeper = new TimeKeeper(switcheroo, SWITCHEROO_ROOM_FAN_PORT, &config.roomFanSchedule, &data.roomFanOn);
+PumpControl* pumpControl = new PumpControl(switcheroo, SWITCHEROO_PUMP_PORT, &data, &config.pumpOn);
 #endif
 
 FixedThermostat chillerThermostat;
@@ -149,6 +151,51 @@ void debug_scan_i2c(TwoWire *wire, I2CMultiplexer* plex) {
   else
     dbg.printf("done\n");
 }
+
+void debug_scan_i2c(TwoWire *wire) {
+  byte error, address; //variable for error and I2C address
+  int nDevices;
+
+  for (int i = 0; i < 16; i++) {
+    int port = i;
+        //  dbg.printf("port in %d\n", port);
+    nDevices = 0;
+    for (address = 1; address < 127; address++ )
+    {
+
+      // The i2c_scanner uses the return value of
+      // the Write.endTransmisstion to see if
+      // a device did acknowledge to the address.
+      wire->beginTransmission(address);
+      error = wire->endTransmission();
+      byte printaddr;
+      if (address < 16) {
+        printaddr =  0;
+      } else {
+        printaddr = address;
+      }
+      if (error == 0)
+      {
+        
+        dbg.printf("I2C device found port %d at address %x\n", i, printaddr);
+        // if (address < 16)
+        //   dbg.print("0");
+        // dbg.print(address, HEX);
+        // dbg.println("  !");
+        nDevices++;
+      }
+      else if (error == 4)
+      {
+        dbg.printf("Unknown error port %d at address %x\n", i, printaddr);
+      }
+    }
+  }
+  if (nDevices == 0)
+    dbg.printf("No I2C devices found \n");
+  else
+    dbg.printf("done\n");
+}
+
 Sensorama sensorama = Sensorama(i2cBus, i2cBus2, &i2cMultiplexer, &data, &config, doImportantTicks);
 
 
@@ -440,6 +487,7 @@ void loop() {
 //debug_scan_i2c(i2cBus2, &i2cMultiplexer);
       sensorama.update();
       updateThermostats();
+      pumpControl->handle();
       sendState();
       dbg.printf("Waiting to tick again for %d\n", config.samplingIntervalMS);
     }

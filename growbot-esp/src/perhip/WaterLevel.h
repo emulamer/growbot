@@ -11,7 +11,7 @@
 #define WATERLEVEL_I2C_ADDR 0x59
 
 #define MIN_VAL 751
-#define MAX_VAL 870
+#define MAX_VAL 850
 
 class WaterLevel : public SensorBase
 {

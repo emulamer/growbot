@@ -35,6 +35,9 @@
 
 //switcheroo power config
 #define SWITCHEROO_CHILLER_PORT 0
+#define SWITCHEROO_LIGHTS_PORT 1
+#define SWITCHEROO_ROOM_FAN_PORT 2
+#define SWITCHEROO_PUMP_PORT 3
 
 //ultrasonic water level config
 

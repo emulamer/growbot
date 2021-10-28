@@ -55,9 +55,11 @@ class PowerControl {
             byte val = levelMap[idx];
             this->doPlex();
             this->_wire->beginTransmission(this->m_address);
-            this->_wire->write(portAddr);
-            this->_wire->write(val);
-            this->_wire->endTransmission();
+            dbg.printf("POWER WRITE byte port %d RET: %d\n", portAddr, this->_wire->write(portAddr));
+            dbg.printf("POWER WRITE byte val %d RET: %d\n", val, this->_wire->write(val));
+            
+            
+            dbg.printf("POWER END RET: %d\n", this->_wire->endTransmission());
         }
         void onTimerTick() {
             //dbg.println("power timer tick");
