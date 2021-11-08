@@ -31,7 +31,10 @@ if (process.argv.length > 2 && process.argv[2] == "ws") {
     socket.send(bytes);
   }
 }
-if (process.argv.length > 2 && process.argv[2] == "doser") {
+if (process.argv.length > 2 && +process.argv[2] == process.argv[2]) {
+  server.bind(+process.argv[2]);
+}
+else if (process.argv.length > 2 && process.argv[2] == "doser") {
   server.bind(44445);  
 } else {
   server.bind(44444);

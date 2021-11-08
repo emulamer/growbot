@@ -18,6 +18,7 @@ class SensorBase {
         virtual void init() = 0;
         virtual void preupdate(GrowbotData* data){};
         virtual void reconfigure(void* configAddr) {};
+        virtual void handle() {};
 };
 struct DeferredReading {
     unsigned long deferUntil = 0;

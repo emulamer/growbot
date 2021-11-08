@@ -5,7 +5,8 @@
 #include "GrowbotData.h"
 #include "perhip/WaterTempSensor.h"
 #include "perhip/LuxSensor.h"
-#include "perhip/WaterLevel.h"
+#include "perhip/WSWaterLevel.h"
+#include "perhip/I2CWaterLevel.h"
 #include "perhip/PhSensor.h"
 #include "perhip/ConductivitySensor.h"
 #include "perhip/TempHumiditySensor.h"
@@ -41,9 +42,8 @@
                 { &this->data->NAME.temperatureC, &this->data->NAME.humidity },\
                 NULL)
             
-
 #define MAKEWATERLEVEL(NAME, MXPORT) new SensorHolder(\
-                new WaterLevel(I2COBJ, i2cMultiplexer, MXPORT),\
+                new I2CWaterLevel(I2COBJ, i2cMultiplexer, MXPORT),\
                 {new ReadingNormalizer(#NAME, 10, 3, .5f, 0, 100)},\
                 #NAME,\
                 1,\
@@ -120,6 +120,10 @@ class Sensorama {
 
            //control bucket sensors
            this->sensors.push_back(MAKEWATERTEMP(controlBucket.temperatureC, DallasWaterTempSensor, WT_CONTROL_BUCKET_ADDRESS));
+        //    this->sensors.push_back(new SensorHolder(new WSWaterLevel("growbot-flow", 8118),
+        //                                             {new ReadingNormalizer("controlBucket.waterLevelPercent", 10, 3, .5f, 0, 100)},
+        //                                             "controlBucket.waterLevelPercent", 1,
+        //                                             { &this->data->controlBucket.waterLevelPercent }, NULL));
            this->sensors.push_back(MAKEWATERLEVEL(controlBucket.waterLevelPercent, CONTROL_WATER_LEVEL_MX_PORT));
 
            //light sensors
@@ -273,6 +277,11 @@ class Sensorama {
                 dbg.printf("Sensorama: %s %s\n", this->sensors[i]->name, okays[i]?"OK":"FAILED");
             }
             free(okays);
+        }
+        void handle() {
+             for (auto sensor : this->sensors) {
+                 sensor->sensor->handle();
+             }
         }
 };
 

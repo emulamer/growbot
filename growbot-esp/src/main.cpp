@@ -11,7 +11,7 @@
 #include "ReadingNormalizer.h"
 #include "perhip/WaterTempSensor.h"
 #include "perhip/LuxSensor.h"
-#include "perhip/WaterLevel.h"
+#include "perhip/WSWaterLevel.h"
 #include "perhip/PhSensor.h"
 #include "perhip/ConductivitySensor.h"
 #include "perhip/TempHumiditySensor.h"
@@ -19,7 +19,6 @@
 #include "Thermostat.h"
 #include "perhip/SwitcherooWiFi.h"
 #include "TimeKeeper.h" 
-#ifdef ARDUINO_ARCH_ESP32
 #include <ArduinoOTA.h>
 #include "soc/rtc_wdt.h"
 #include <driver/periph_ctrl.h>
@@ -30,13 +29,7 @@
 WifiManager wifiMgr(WIFI_SSID, WIFI_PASSWORD);
 MQTTDataConnection dataConn(MQTT_HOST, MQTT_PORT, MQTT_TOPIC, MQTT_CONFIG_TOPIC);
 EEPROMNVStore nvStore;
-#endif
-#ifdef ARDUINO_ARCH_RP2040
-#include "SerialDataConnection.h"
-#include "PINVStore.h"
-SerialDataConnection dataConn = SerialDataConnection();
-PINVStore nvStore;
-#endif
+
 
 #define EC_CALIBRATION_LOW 12880
 #define EC_CALIBRATION_HIGH 80000
@@ -60,13 +53,7 @@ PINVStore nvStore;
 GrowbotConfig config;
 GrowbotData data;
 GrowbotState state;
-//i2c stuff
-#ifdef ARDUINO_ARCH_RP2040
-TwoWire* i2cBus = new TwoWire((int)I2C_SDA_PIN, (int)I2C_SCL_PIN);
-I2CMultiplexer i2cMultiplexer(i2cBus, I2C_MULTIPLEXER_ADDRESS, I2C_MULTIPLEXER2_ADDRESS);
-PowerControl powerCtl(i2cBus, &i2cMultiplexer, POWER_MX_PORT, I2C_POWER_CTL_ADDR);
-#endif
-#ifdef ARDUINO_ARCH_ESP32
+
 TwoWire* i2cBus = &Wire;
 TwoWire* i2cBus2 = &Wire1;
 I2CMultiplexer i2cMultiplexer(i2cBus, i2cBus2, I2C_MULTIPLEXER2_ADDRESS);
@@ -75,7 +62,7 @@ SwitcherooWiFi* switcheroo = new SwitcherooWiFi("growbot-switcheroo");
 TimeKeeper* lightsTimekeeper = new TimeKeeper(switcheroo, SWITCHEROO_LIGHTS_PORT, &config.lightSchedule, &data.lightsOn);
 TimeKeeper* roomFansTimekeeper = new TimeKeeper(switcheroo, SWITCHEROO_ROOM_FAN_PORT, &config.roomFanSchedule, &data.roomFanOn);
 PumpControl* pumpControl = new PumpControl(switcheroo, SWITCHEROO_PUMP_PORT, &data, &config.pumpOn);
-#endif
+
 
 FixedThermostat chillerThermostat;
 int operating_mode = GROWBOT_MODE_NORMAL;
@@ -90,18 +77,17 @@ void sendState() {
     }
     dbg.printf("sending state, lights flag is: %d\n", state.data.lightsOn);
 }
-
+void doImportantTicks();
+Sensorama sensorama = Sensorama(i2cBus, i2cBus2, &i2cMultiplexer, &data, &config, doImportantTicks);
 void doImportantTicks() {
   bool doSendState = false;
-  #if ARDUINO_ARCH_ESP32
   ArduinoOTA.handle();
   wifiMgr.handle();
-  
   doSendState = doSendState || lightsTimekeeper->handle();
   doSendState = doSendState || roomFansTimekeeper->handle();
-  #endif
   powerCtl.handle();
   dataConn.handle();
+  sensorama.handle();
   if (doSendState) {
     sendState();
   }
@@ -196,7 +182,7 @@ void debug_scan_i2c(TwoWire *wire) {
     dbg.printf("done\n");
 }
 
-Sensorama sensorama = Sensorama(i2cBus, i2cBus2, &i2cMultiplexer, &data, &config, doImportantTicks);
+
 
 
 

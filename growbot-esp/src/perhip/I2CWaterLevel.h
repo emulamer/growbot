@@ -13,7 +13,7 @@
 #define MIN_VAL 751
 #define MAX_VAL 850
 
-class WaterLevel : public SensorBase
+class I2CWaterLevel : public SensorBase
 {
     private:
         TwoWire* _wire;
@@ -26,11 +26,11 @@ class WaterLevel : public SensorBase
             }
         }
     public:
-        WaterLevel(TwoWire* wire) {
+        I2CWaterLevel(TwoWire* wire) {
             this->_wire = wire;
             this->isMultiplexer = false;
         }
-        WaterLevel(TwoWire* wire, I2CMultiplexer* multiplexer, int multiplexer_bus) {
+        I2CWaterLevel(TwoWire* wire, I2CMultiplexer* multiplexer, int multiplexer_bus) {
             this->_wire = wire;
             this->isMultiplexer = true;
             this->plexer = multiplexer;
