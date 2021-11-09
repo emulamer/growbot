@@ -4,12 +4,12 @@
 #include <WiFi.h>
 #include "GrowbotData.h"
 #include "perhip/SwitcherooWiFi.h"
-#include "DebugUtils.h"
+#include <DebugUtils.h>
 
 #ifndef PUMP_CONTROL_H
 #define PUMP_CONTROL_H
 
-#define MIN_WATER_LEVEL_PERCENT 6
+#define MIN_WATER_LEVEL_PERCENT 0
 class PumpControl {
     private:
         GrowbotData* growbotData;
@@ -38,7 +38,7 @@ class PumpControl {
             }
             this->growbotData->pumpEmergencyShutoff = emShutoff;
             if (this->switcher->getPowerToggle(this->portNum) != this->growbotData->pumpOn) {
-                dbg.printf("PumpControl: changing port %d to state %s\n", this->portNum, this->growbotData->pumpOn?"ON":"OFF");
+                dbg.dprintf("PumpControl: changing port %d to state %s\n", this->portNum, this->growbotData->pumpOn?"ON":"OFF");
             }
             this->switcher->setPowerToggle(this->portNum, this->growbotData->pumpOn);
         }

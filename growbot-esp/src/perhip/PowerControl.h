@@ -2,7 +2,7 @@
 #include <Wire.h>
 #include "I2CMultiplexer.h"
 #include "../GrowbotData.h"
-#include "../DebugUtils.h"
+#include <DebugUtils.h>
 #ifndef POWERCONTROL_H
 #define POWERCONTROL_H
 
@@ -55,11 +55,11 @@ class PowerControl {
             byte val = levelMap[idx];
             this->doPlex();
             this->_wire->beginTransmission(this->m_address);
-            dbg.printf("POWER WRITE byte port %d RET: %d\n", portAddr, this->_wire->write(portAddr));
-            dbg.printf("POWER WRITE byte val %d RET: %d\n", val, this->_wire->write(val));
+            dbg.dprintf("POWER WRITE byte port %d RET: %d\n", portAddr, this->_wire->write(portAddr));
+            dbg.dprintf("POWER WRITE byte val %d RET: %d\n", val, this->_wire->write(val));
             
             
-            dbg.printf("POWER END RET: %d\n", this->_wire->endTransmission());
+            dbg.dprintf("POWER END RET: %d\n", this->_wire->endTransmission());
         }
         void onTimerTick() {
             //dbg.println("power timer tick");
@@ -76,7 +76,7 @@ class PowerControl {
                     // dbg.print(" current millis is ");
                     // dbg.println(millis());
                     if (this->spinUpEndStamp[i] < millis()) {
-                        dbg.printf("\t\tpowertmr: setting %d => %d\r\n", i, this->m_targetIdx[i]);
+                        dbg.dprintf("\t\tpowertmr: setting %d => %d\r\n", i, this->m_targetIdx[i]);
                         this->setChannelIdxDirect(i, this->m_targetIdx[i]);
                         this->spinUpEndStamp[i] = 0;
                     } else {
@@ -204,10 +204,10 @@ class PowerControl {
             }
             this->m_channelLevel[portNum] = level;
             if (this->toggledOn[portNum]) {
-                dbg.printf("power set port %d to level %d\r\n", portNum, level);
+                dbg.dprintf("power set port %d to level %d\r\n", portNum, level);
                 this->setChannelLevelInternal(portNum, level);
             } else {
-                dbg.printf("power set port %d to level %d, but power toggle is off\r\n", portNum, level);
+                dbg.dprintf("power set port %d to level %d, but power toggle is off\r\n", portNum, level);
                 this->setChannelLevelInternal(portNum, 0);
             }
         }        

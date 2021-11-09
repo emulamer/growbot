@@ -56,7 +56,7 @@ struct GrowbotConfig {
     bool exhaustFanOn;      
     bool intakeFanOn;
     bool pumpOn;
-    //1 padding
+    bool bubblesOn;
     PowerControlCalibration exhaustFanCalibration;  //12
     PowerControlCalibration intakeFanCalibration;   //12
     int samplingIntervalMS;
@@ -88,6 +88,8 @@ struct GrowbotData {
     bool roomFanOn;
     bool pumpOn;
     bool pumpEmergencyShutoff;
+    bool bubblesOn;
+    //3 padding
     BucketData buckets[DATA_BUCKET_COUNT];
 };
 

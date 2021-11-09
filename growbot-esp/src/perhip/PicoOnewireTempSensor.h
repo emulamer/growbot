@@ -1,7 +1,7 @@
 #ifdef ARDUINO_ARCH_RP2040
 #include <Arduino.h>
 #include "libs/one_wire.h"
-#include "../DebugUtils.h"
+#include <DebugUtils.h>
 #include "SensorBase.h"
 #ifndef PICOONEWIRETEMPSENSOR_H
 #define PICOONEWIRETEMPSENSOR_H

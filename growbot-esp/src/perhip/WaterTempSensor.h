@@ -2,7 +2,7 @@
 // #include <OneWire.h>
 // #include <DallasTemperature.h>
 
-#include "../DebugUtils.h"
+#include <DebugUtils.h>
 #include "SensorBase.h"
 #ifndef WATERTEMPSENSOR_H
 #define WATERTEMPSENSOR_H

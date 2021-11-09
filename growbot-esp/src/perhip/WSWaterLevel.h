@@ -1,101 +1,108 @@
 #include <Arduino.h>
-#include "../DebugUtils.h"
+#include <DebugUtils.h>
 #include "../SensorBase.h"
 #include "../GrowbotData.h"
-#include <ESPmDNS.h>
 #include <WebSocketsClient.h>
 #include <WiFi.h>
 #include <ArduinoJson.h>
 #include <ESPRandom.h>
+#include <GrowbotCommon.h>
 
 #pragma once
 using namespace std::placeholders;
+
+#define STATUS_MAX_AGE_MS 10000
 
 class WSWaterLevel : public SensorBase
 {
     private:
         const char* hostname;
         int port;
-        IPAddress resolvedIP = INADDR_NONE;
+        IPAddress resolvedIP = INADDR_ANY;
         WebSocketsClient webSocket;
         bool isConnected = false;
         bool isInitted = false;
         float replyWaterLevel = NAN;
+
+        float lastStatusLevel = NAN;
+        unsigned long lastStatusStamp = 0;
         StaticJsonDocument<512> readDoc;
-        bool checkResolve() {
-            if (resolvedIP != INADDR_NONE) {
-                return resolvedIP;
-            }
-            IPAddress serverIp = MDNS.queryHost(this->hostname);
-            String ipStr = serverIp.toString();
-            if (serverIp == (IPAddress)INADDR_NONE) {
-                dbg.printf("WSWaterLevel: MDNS failed to resolve hostname!\n");
+        bool connectWebsocket() {
+            IPAddress newip;
+            if (!Resolver.resolve(hostname, &newip)) {
+                dbg.wprintln("WSWaterLevel: failed to resolve hostname!");
                 return false;
             }
-            resolvedIP = serverIp;
+            if (newip != resolvedIP) {
+                dbg.dprintf("WSWaterLevel: resolved ip has change from %s to %s\n", resolvedIP.toString(), newip.toString());
+                resolvedIP = newip;
+            }
+            webSocket.begin(resolvedIP, port, "/");
             return true;
         }
         void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
             switch(type) {
                 case WStype_DISCONNECTED:
                     isConnected = false;
-                    dbg.printf("[WSc] Disconnected!\n");
+                    dbg.eprintf("WSWaterLevel: websocket disconnected!\n");
+                    connectWebsocket();
                     break;
                 case WStype_CONNECTED:
                     isConnected = true;
-                    dbg.printf("[WSc] Connected to url: %s\n", payload);
+                    dbg.println("WSWaterLevel: websocket connected");
                     break;
                 case WStype_TEXT:
-                    dbg.printf("[WSc] get text: %s\n", payload);
                     auto err = deserializeJson(readDoc, payload, length);
                     if (err) {
-                        dbg.printf("WSWaterLevel: Failed to deserialize ws msg: %s\n", err.c_str());
+                        dbg.wprintf("WSWaterLevel: Failed to deserialize ws msg: %s\n", err.c_str());
                         return;
                     }
-                    if (!readDoc["success"].as<bool>()) {
-                        dbg.printf("WSWaterLevel: success was false or missing");
-                        if (readDoc.containsKey("error")) {
-                          dbg.printf(" error: %s\n", readDoc["error"].as<String>().c_str());
-                        } else {
-                            dbg.println("no error in response");
+                    String event = readDoc["event"].as<String>();
+                    if (event == NULL || event.length() < 1) {
+                        dbg.wprintf("WSWaterLevel: message event was null or empty!");
+                        return;
+                    }
+                    if (event.equals("status")) {
+                        if (!readDoc.containsKey("waterLevel")) {
+                            dbg.wprintln("WSWaterLevel: got a status update but it didn't have a water level");
+                            return;
                         }
-                        return;
+                        lastStatusLevel = readDoc["waterLevel"].as<float>();
+                        lastStatusStamp = millis();
+                    } else if (event.equals("cmdresult")) {
+                        if (!readDoc["success"].as<bool>()) {
+                            dbg.eprintf("WSWaterLevel: success was false or missing");
+                            if (readDoc.containsKey("error")) {
+                            dbg.eprintf(" error: %s\n", readDoc["error"].as<String>().c_str());
+                            } else {
+                                dbg.println("no error in response");
+                            }
+                            return;
+                        }
+                        if (!readDoc.containsKey("waterLevel")) {
+                            dbg.wprintf("WSWaterLevel: response was missing waterLevel\n");
+                            return;
+                        }
+                        replyWaterLevel = readDoc["waterLevel"].as<float>();
+                        dbg.dprintf("WSWaterLevel: got response of %f\n", replyWaterLevel);
                     }
-                    if (!readDoc.containsKey("waterLevel")) {
-                        dbg.printf("WSWaterLevel: response was missing waterLevel\n");
-                        return;
-                    }
-                    replyWaterLevel = readDoc["waterLevel"].as<float>();
-                    dbg.printf("WSWaterLevel: got response of %f\n", replyWaterLevel);
                     readDoc.clear();
                     break;
-                // case WStype_BIN:
-                //     dbg.printf("[WSc] get binary length: %u\n", length);
-                //     break;
-                // case WStype_ERROR:			
-                // case WStype_FRAGMENT_TEXT_START:
-                // case WStype_FRAGMENT_BIN_START:
-                // case WStype_FRAGMENT:
-                // case WStype_FRAGMENT_FIN:
-                // default:
-                //     dbg.println("got some websocket stuff that isn't handled");
-                //     break;
             }
 
         }
         bool checkConnect() {
             if (!WiFi.isConnected()) {
-                dbg.println("WSWaterLevel: wifi isn't connected yet...");
+                dbg.wprintln("WSWaterLevel: wifi isn't connected yet...");
                 return false;
             }
             if (!isInitted) {
-                if (!checkResolve()) {
-                    dbg.println("WSWaterLevel: failed to resolve hostname");
+                if (!connectWebsocket()) {
                     return false;
                 }
-                webSocket.begin(resolvedIP.toString(), port, "/");
                 webSocket.onEvent(std::bind(&WSWaterLevel::webSocketEvent, this, _1, _2, _3));
                 webSocket.setReconnectInterval(5000);
+                
                 isInitted = true;
             }
             return isConnected;
@@ -104,8 +111,7 @@ class WSWaterLevel : public SensorBase
         WSWaterLevel(const char* websocketHostname, int websocketPort) {
             this->hostname = websocketHostname;
             this->port = websocketPort;
-        }
-        
+        }       
 
         DeferredReading startRead() {
             replyWaterLevel = NAN;
@@ -113,8 +119,16 @@ class WSWaterLevel : public SensorBase
             reading.isComplete = false;
             reading.readingCount = 1;
             reading.deferUntil = 0;
+
+            if (!isnan(lastStatusLevel) && millis() - lastStatusStamp <= STATUS_MAX_AGE_MS) {
+                //already have a recent water level from a status update
+                reading.isComplete = true;
+                reading.isSuccessful = true;
+                reading.values[0] = lastStatusLevel;
+                return reading;
+            }
             if (!this->checkConnect()) {
-                dbg.println("WSWaterLevel: not connected!");
+                dbg.eprintln("WSWaterLevel: not connected!");
                 reading.isComplete = true;
                 reading.isSuccessful = false;
                 reading.values[0] = NAN;
@@ -139,12 +153,15 @@ class WSWaterLevel : public SensorBase
             return reading;
         }
         void finishRead(DeferredReading &reading) {
-           if (replyWaterLevel == NAN) {
-               dbg.println("WSWaterLevel: apparently didn't get a reply with water level");
-               reading.isSuccessful = false;
-               reading.values[0] = NAN;
-               return;
-           }
+            if (reading.isComplete) {
+                return;
+            }
+            if (replyWaterLevel == NAN) {
+                dbg.wprintln("WSWaterLevel: apparently didn't get a reply with water level");
+                reading.isSuccessful = false;
+                reading.values[0] = NAN;
+                return;
+            }
             reading.isSuccessful = true;
             reading.values[0] = replyWaterLevel;
             replyWaterLevel = NAN;

@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include "DebugUtils.h"
+#include <DebugUtils.h>
 
 #ifndef SensorBase_H
 #define SensorBase_H

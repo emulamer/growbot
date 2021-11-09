@@ -1,3 +1,5 @@
+#define LOG_UDP_PORT 44445
+#include <GrowbotCommon.h>
 #include <Wifi.h>
 #include <ArduinoOTA.h>
 #include <ESPmDNS.h>
@@ -117,7 +119,7 @@ void saveCalibrations() {
 }
 
 void updatePorts() {
-  dbg.printf("Updating ports, 0: %s, 1: %s, 2: %s, 3: %s, 4: %s, 5: %s\n",
+  dbg.dprintf("Updating ports, 0: %s, 1: %s, 2: %s, 3: %s, 4: %s, 5: %s\n",
       ((portFlags & (1<<(PORT_OFFSET + 5))) > 1)?"ON":"off",
       ((portFlags & (1<<(PORT_OFFSET + 4))) > 1)?"ON":"off",
       ((portFlags & (1<<(PORT_OFFSET + 3))) > 1)?"ON":"off",
@@ -157,7 +159,7 @@ void endDispense(byte port) {
 }
 void startDispenseForMS(byte port, int millisec) {
   if (portTimers[port].running) {
-    dbg.printf("Warining: dispense in progress but starting another dispense on port %d.\n", port);
+    dbg.wprintf("Warining: dispense in progress but starting another dispense on port %d.\n", port);
   }
   dbg.printf("Starting dispense on port %d for %d millisec\n", port, millisec);
   portTimers[port].startStamp = millis();
@@ -203,14 +205,14 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length)
       }
       break;
     case WStype_TEXT:
-      dbg.println("websocket text");
-      dbg.printf("payload: %s", payload);
+      dbg.dprintln("websocket text");
+      dbg.dprintf("payload: %s", payload);
       break;
     case WStype_BIN:
-        dbg.println("websocket binary");
+        dbg.dprintln("websocket binary");
         switch (payload[0]) {
           default:
-            dbg.printf("unknown command %d\n", payload[0]);
+            dbg.eprintf("unknown command %d\n", payload[0]);
             break;
           case MSG_STOP_ALL:
             //todo: figure out if anything is dispensing and send end messages?
@@ -219,19 +221,19 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length)
           case MSG_DISPENSE_ML:
             if (length < 6) {
               //bad message
-              dbg.printf("Bad message length %d for dispense ml msg, needed 6\n", length);
+              dbg.eprintf("Bad message length %d for dispense ml msg, needed 6\n", length);
               utility[0] = 0xFF;
               webSocket.sendBIN(num, utility, 1);
               return;
             }
             if (payload[1] > 5) {
-              dbg.printf("Bad port number %d for dispense ml msg, should be 0-5\n", payload[1]);
+              dbg.eprintf("Bad port number %d for dispense ml msg, should be 0-5\n", payload[1]);
               utility[0] = 0xFF;
               webSocket.sendBIN(num, utility, 1);
               return;
             } 
             if (*((float*)(payload + 2)) <= 0 || *((float*)(payload + 2)) > MAX_DISPENSE_ML_AMOUNT) {
-              dbg.printf("Bad ML value %f for dispense ml msg, should be > 0 and <= %d\n", *((float*)(payload + 2)), MAX_DISPENSE_ML_AMOUNT);
+              dbg.eprintf("Bad ML value %f for dispense ml msg, should be > 0 and <= %d\n", *((float*)(payload + 2)), MAX_DISPENSE_ML_AMOUNT);
               utility[0] = 0xFF;
               webSocket.sendBIN(num, utility, 1);
               return;
@@ -241,19 +243,19 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length)
           case MSG_DISPENSE_MILLISEC:
             if (length < 6) {
                 //bad message
-                dbg.printf("Bad message length %d for dispense millisec msg, needed 6\n", length);
+                dbg.eprintf("Bad message length %d for dispense millisec msg, needed 6\n", length);
                 utility[0] = 0xFF;
                 webSocket.sendBIN(num, utility, 1);
                 return;
             }
             if (payload[1] > 5) {
-              dbg.printf("Bad port number %d for dispense millisec msg, should be 0-5\n", payload[1]);
+              dbg.eprintf("Bad port number %d for dispense millisec msg, should be 0-5\n", payload[1]);
               utility[0] = 0xFF;
               webSocket.sendBIN(num, utility, 1);
               return;
             } 
             if (*((int*)(payload + 2)) <= 0 || *((int*)(payload + 2)) > MAX_DISPENSE_MS) {
-              dbg.printf("Bad MS value %d for dispense millisec msg, should be > 0 and <= %d\n", *((int*)(payload + 2)), MAX_DISPENSE_MS);
+              dbg.eprintf("Bad MS value %d for dispense millisec msg, should be > 0 and <= %d\n", *((int*)(payload + 2)), MAX_DISPENSE_MS);
               utility[0] = 0xFF;
               webSocket.sendBIN(num, utility, 1);
               return;
@@ -263,14 +265,14 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length)
           case MSG_CALIBRATION_SET:
             if (length < 6) {
               //bad message
-              dbg.printf("Bad message length %d for set calibration msg, needed 6\n", length);
+              dbg.eprintf("Bad message length %d for set calibration msg, needed 6\n", length);
               utility[0] = 0xFF;
               webSocket.sendBIN(num, utility, 1);
               return;
             }
             dbg.println("length ok");
             if (payload[1] > 5) {
-              dbg.printf("Bad port number %d for set calibration msg, should be 0-5\n", payload[1]);
+              dbg.eprintf("Bad port number %d for set calibration msg, should be 0-5\n", payload[1]);
               utility[0] = 0xFF;
               webSocket.sendBIN(num, utility, 1);
               return;
@@ -279,16 +281,16 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length)
             float val;
             memcpy(&val, &payload[2], 4);
             if (val <= 0 || val > MAX_CALIBRATION_VAL) {
-              dbg.printf("Bad ML/sec value %f for set calibration msg, should be > 0 and <= %d\n", val, MAX_CALIBRATION_VAL);
+              dbg.eprintf("Bad ML/sec value %f for set calibration msg, should be > 0 and <= %d\n", val, MAX_CALIBRATION_VAL);
               utility[0] = 0xFF;
               webSocket.sendBIN(num, utility, 1);
               return;
             }
-            dbg.println("float ok");
+            dbg.dprintln("float ok");
             portCalibrations[payload[1]] = val;
-            dbg.println("set in mem ok");
+            dbg.dprintln("set in mem ok");
             saveCalibrations();
-            dbg.println("wrote eeprom ok");
+            dbg.dprintln("wrote eeprom ok");
             utility[0] = RSP_CALIBRATION_VALUE;
             utility[1] = payload[1];
             memcpy(utility+2, &portCalibrations[payload[1]], 4);
@@ -297,13 +299,13 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length)
           case MSG_CALIBRATION_GET:
               if (length < 2) {
               //bad message
-              dbg.printf("Bad message length %d for get calibration msg, needed 2\n", length);
+              dbg.eprintf("Bad message length %d for get calibration msg, needed 2\n", length);
               utility[0] = 0xFF;
               webSocket.sendBIN(num, utility, 1);
               return;
             }
             if (payload[1] > 5) {
-              dbg.printf("Bad port number %d for get calibration msg, should be 0-5\n", payload[1]);
+              dbg.eprintf("Bad port number %d for get calibration msg, should be 0-5\n", payload[1]);
               utility[0] = 0xFF;
               webSocket.sendBIN(num, utility, 1);
               return;
@@ -317,78 +319,32 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length)
       break;
   }
 }
-void wifi_event(system_event_t *sys_event, wifi_prov_event_t *prov_event) {
-  if (WiFi.status() == wl_status_t::WL_CONNECTED) {
-    dbg.wifiIsReady();
-    dbg.printf("Got IP address\n");
-  }
-  // if (sys_event->event_id == system_event_id_t::SYSTEM_EVENT_STA_DISCONNECTED) {
-  //   reconnectWifiAt = millis() + WIFI_RECONNECT_DELAY;
-  // }
-}
 void setup() {
   pinMode(CLOCK_PIN, OUTPUT);
   pinMode(LATCH_PIN, OUTPUT);
   pinMode(DATA_PIN, OUTPUT);
   allOff();
   Serial.begin(9600);
-  delay(3000);
+  growbotCommonSetup(MDNS_NAME, WIFI_SSID, WIFI_PASSWORD, []() {
+    dbg.println("Update starting, stopping all dosing");
+    stopAll();
+  });
   dbg.println("growbot-doser starting...");
-
-
   dbg.println("Initting EEPROM...");
   EEPROM.begin(512);
   dbg.println("Loading calibrations...");
   loadCalibrations();
-  dbg.println("Starting Wifi...");
-  WiFi.hostname(MDNS_NAME);
-
-  WiFi.onEvent(wifi_event);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  WiFi.setAutoReconnect(true);
-
-  
-  dbg.println("Setting up OTA...");
-  ArduinoOTA.setPort(3232);
-  ArduinoOTA.setRebootOnSuccess(true);
-  ArduinoOTA.onStart([]() {
-      stopAll();
-      dbg.printf("Start updating\n");
-    });
-    ArduinoOTA.onEnd([]() {
-      stopAll();
-      dbg.println("Update End");
-    });
-    ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-      dbg.printf("Progress: %u%%\r", (progress / (total / 100)));
-    });
-    ArduinoOTA.onError([](ota_error_t error) {
-      dbg.printf("Error[%u]: ", error);
-      if (error == OTA_AUTH_ERROR) dbg.println("Auth Failed");
-      else if (error == OTA_BEGIN_ERROR) dbg.println("Begin Failed");
-      else if (error == OTA_CONNECT_ERROR) dbg.println("Connect Failed");
-      else if (error == OTA_RECEIVE_ERROR) dbg.println("Receive Failed");
-      else if (error == OTA_END_ERROR) dbg.println("End Failed");
-    });
-  ArduinoOTA.begin();
+    
   dbg.println("Starting websocket...");
   webSocket.begin();
   webSocket.onEvent(webSocketEvent);
-  dbg.println("Starting mDNS...");
-  MDNS.begin(MDNS_NAME);
-
   dbg.println("Done with startup");
 }
 
 
 void loop() {
   webSocket.loop();
-  ArduinoOTA.handle();
-  if (!WiFi.isConnected() && reconnectWifiAt < millis()) {
-    reconnectWifiAt = millis() + WIFI_RECONNECT_DELAY;
-    WiFi.reconnect();
-  }
-
+  growbotCommonLoop();
   for (int i = 0; i < NUM_PORTS; i++) {
     if (!portTimers[i].running) {
       continue;

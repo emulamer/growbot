@@ -4,7 +4,7 @@
 #include "../GrowbotData.h"
 #include <Adafruit_BME280.h>
 #include <Wire.h>
-#include "../DebugUtils.h"
+#include <DebugUtils.h>
 
 #ifndef TEMP_HUM_SENSOR_H
 #define TEMP_HUM_SENSOR_H
@@ -172,12 +172,12 @@ class SHTC3Sensor : public TempHumiditySensor {
             if (this->isOk) {
                 this->isOk = (mySHTC3.setMode(SHTC3_CMD_CSE_TF_NPM) == SHTC3_Status_Nominal);
             } else {
-                dbg.println("passIDcrc not ok");
+                dbg.eprintln("passIDcrc not ok");
             }
             if (this->isOk) {
                 this->isOk = (mySHTC3.wake(true) == SHTC3_Status_Nominal);
             } else {
-                dbg.println("wake not ok");
+                dbg.eprintln("wake not ok");
             }
         }
         bool read(TempHumidity &output) {
@@ -199,9 +199,9 @@ class SHTC3Sensor : public TempHumiditySensor {
                         {
                             break;
                         }
-                        dbg.printf("SHT sensor failed read with temp %f hum %f, retry %d\n", output.temperatureC, output.humidity, retries);
+                        dbg.eprintf("SHT sensor failed read with temp %f hum %f, retry %d\n", output.temperatureC, output.humidity, retries);
                     } else {
-                        dbg.printf("SHT sensor failed read with status %d, retry %d\n", static_cast<int>(this->mySHTC3.lastStatus), retries);
+                        dbg.eprintf("SHT sensor failed read with status %d, retry %d\n", static_cast<int>(this->mySHTC3.lastStatus), retries);
                     }
                     retries++;
                     delay(100);
@@ -216,7 +216,7 @@ class SHTC3Sensor : public TempHumiditySensor {
                         output.temperatureC = oldTemp;
                         output.humidity = oldHum;
                     } else {
-                        dbg.println("SHT sensor has failed too many times to ignore!");
+                        dbg.eprintln("SHT sensor has failed too many times to ignore!");
                         output.temperatureC = NAN;
                         output.humidity = NAN;
                     }
@@ -238,7 +238,7 @@ class SHTC3Sensor : public TempHumiditySensor {
                 reading.values[1] = this->mySHTC3.toPercent();
                 reading.isSuccessful = true;
             } else {
-                dbg.printf("SHT sensor failed read with status %d\n", static_cast<int>(this->mySHTC3.lastStatus));
+                dbg.eprintf("SHT sensor failed read with status %d\n", static_cast<int>(this->mySHTC3.lastStatus));
                 reading.values[0] = NAN;
                 reading.values[1] = NAN;
                 reading.isSuccessful = false;

@@ -3,6 +3,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 // wifi/network config
+#define MDNS_NAME "growbot-esp"
 #define WIFI_SSID "MaxNet"
 #define WIFI_PASSWORD "88888888"
 #define MQTT_HOST "growbot"
@@ -38,6 +39,7 @@
 #define SWITCHEROO_LIGHTS_PORT 1
 #define SWITCHEROO_ROOM_FAN_PORT 2
 #define SWITCHEROO_PUMP_PORT 3
+#define SWITCHEROO_BUBBLES_PORT 4
 
 //ultrasonic water level config
 

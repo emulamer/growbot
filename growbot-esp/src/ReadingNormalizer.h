@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include "DebugUtils.h"
+#include <DebugUtils.h>
 
 #ifndef READINGNORMALIZER_H
 #define READINGNORMALIZER_H
@@ -20,7 +20,7 @@ class ReadingNormalizer {
         float lastGoodRead = NAN;
         bool validateReading(float reading) {
             if (isnan(reading) || reading < this->minValue || reading > this->maxValue) {
-                dbg.printf("Normalizer: reading on %s is NaN\n", this->name);
+                dbg.wprintf("Normalizer: reading on %s is NaN\n", this->name);
                 return false;
             }
             return true;
@@ -30,7 +30,7 @@ class ReadingNormalizer {
                 float avg = this->getAvgReading();
                 float diff = abs(reading - avg);
                 if (diff >= 1 && diff > (this->maxDeviance * avg)) {
-                    dbg.printf("Normalizer: reading on %s of %f deviates too much from avg of %f\n", this->name, reading, avg);
+                    dbg.wprintf("Normalizer: reading on %s of %f deviates too much from avg of %f\n", this->name, reading, avg);
                     return true;
                 }
             }
@@ -62,10 +62,10 @@ class ReadingNormalizer {
                 this->readFailCount++;
                 //if it's failed more than the number of max backfills, send back a NAN
                 if (this->readFailCount > this->maxBackfill) {
-                    dbg.printf("Normalizer: Reading on %s of %f was invalid and there are too many failed!\n", this->name, reading);
+                    dbg.wprintf("Normalizer: Reading on %s of %f was invalid and there are too many failed!\n", this->name, reading);
                     return NAN;
                 }
-                dbg.printf("Normalizer: Reading on %s of %f was invalid, returning last good value: %f\n", this->name, reading, this->lastGoodRead);
+                dbg.wprintf("Normalizer: Reading on %s of %f was invalid, returning last good value: %f\n", this->name, reading, this->lastGoodRead);
                 return this->lastGoodRead;
             } 
             
@@ -86,15 +86,15 @@ class ReadingNormalizer {
             if (this->deviates(reading)) {
                 this->readFailCount++;
                 if (this->readFailCount > this->maxBackfill) {
-                    dbg.printf("Normalizer: Reading on %s of %f was invalid and there are too many failed!\n", this->name, reading);
+                    dbg.wprintf("Normalizer: Reading on %s of %f was invalid and there are too many failed!\n", this->name, reading);
                     return NAN;
                 }
-                dbg.printf("Normalizer: Reading on %s of %f deviates too far!  Returning last good value %f\n", this->name, reading, this->lastGoodRead);
+                dbg.wprintf("Normalizer: Reading on %s of %f deviates too far!  Returning last good value %f\n", this->name, reading, this->lastGoodRead);
                 return this->lastGoodRead;
             
             } else {
                 this->readFailCount = 0;
-                dbg.printf("good reading on %s, setting last good read to %f\n", this->name, reading);
+                dbg.dprintf("good reading on %s, setting last good read to %f\n", this->name, reading);
                 this->lastGoodRead = reading;                
             }     
             

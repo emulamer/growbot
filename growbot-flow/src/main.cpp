@@ -1,8 +1,9 @@
+#define LOG_UDP_PORT 44446
+#define GB_NODE_TYPE "growbot-flow"
+#include <GrowbotCommon.h>
 #include <Arduino.h>
 #include <ArduinoOTA.h>
 #include <WiFi.h>
-#include <ESPmDNS.h>
-#include "DebugUtils.h"
 #include <WebSocketsServer.h>
 #include "FlowMeter.h"
 #include <ESP32AnalogRead.h>
@@ -18,32 +19,130 @@
 #define WEBSOCKET_PORT 8118
 
 
-//const byte PORTPINS[NUM_PORTS] = {14, 32, 33, 25, 26, 27};
-
 
 WaterLevel waterLevel(35, 34, 500);
-FlowMeter inFlowMeter(5, 2280);
-FlowMeter outFlowMeter(21, 2280); //2280 is probably wrong
-SolenoidValve inValve(26, 500, 20);//both valve pulse time and hold values are probably wrong
-SolenoidValve outValve(27, 500, 20);
+FlowMeter inFlowMeter(5, 1000);
+FlowMeter outFlowMeter(21, 586); 
 
+SolenoidValve inValve(33, 300, 15);//both valve pulse time and hold values are probably wrong
+SolenoidValve outValve(27, 300, 15);
+// SolenoidValve valve3(26, 500, 20);
+// SolenoidValve valve4(14, 500, 20);
+// SolenoidValve valve5(32, 500, 20);
+// SolenoidValve valve6(25, 500, 20);
+
+
+//connector side:  33 32  14??? something wrong, 32 always triggers
+// other side: 33, 32, 25
 
 FlowOp* currentFlowOp = NULL;
 
 
 
 WebSocketsServer webSocket(WEBSOCKET_PORT);   
-
-
-void wifi_event(system_event_t *sys_event, wifi_prov_event_t *prov_event) {
-  if (WiFi.status() == wl_status_t::WL_CONNECTED) {
-    dbg.wifiIsReady();
-    dbg.printf("Got IP address\n");
+void makeOp(StaticJsonDocument<512> &doc) {
+if (currentFlowOp != NULL) {
+    switch (currentFlowOp->getType()) {
+      case FlowOpType::DrainToPercent:
+        doc["currentOperation"]["type"] = "DrainToPercent";
+        break;
+      case FlowOpType::Empty:
+        doc["currentOperation"]["type"] = "Empty";
+        break;
+      case FlowOpType::FillToPercent:
+        doc["currentOperation"]["type"] = "FillToPercent";
+        break;
+      case FlowOpType::FillToPercentOnce:
+        doc["currentOperation"]["type"] = "FillToPercentOnce";
+        break;
+      case FlowOpType::Flush:
+        doc["currentOperation"]["type"] = "Flush";
+        break;
+      case FlowOpType::FlushAndFillToPercent:
+        doc["currentOperation"]["type"] = "FlushAndFillToPercent";
+        break;
+      case FlowOpType::Wait:
+        doc["currentOperation"]["type"] = "Wait";
+        break;
+    }
+    doc["currentOperation"]["status"] = currentFlowOp->isFailed()?"failed":(currentFlowOp->isDone()?"done":"running");
+    doc["currentOperation"]["opInFlow"] = currentFlowOp->opInFlow;
+    doc["currentOperation"]["opOutFlow"] = currentFlowOp->opOutFlow;
+    doc["currentOperation"]["opTotalDeltaFlow"] = currentFlowOp->opTotalDeltaFlow;
+  } else {
+    doc["currentOperation"]["type"] = "None";
   }
+}
+void broadcastOpComplete() {
+  if (currentFlowOp == NULL) {
+    return;
+  }
+  StaticJsonDocument<512> doc;
+  doc["event"] = "endop";
+  makeOp(doc);
+  String jsonStr;
+  
+  if (serializeJson(doc, jsonStr) == 0) {
+    dbg.println("Failed to serialize reply json");
+    return;
+  }
+  webSocket.broadcastTXT(jsonStr);
+}
+
+void abortOp() {
+  if (currentFlowOp == NULL || currentFlowOp->isDone()) {
+    return;
+  }
+  currentFlowOp->abort();
+  broadcastOpComplete();
+}
+
+void broadcastOpStart() {
+  if (currentFlowOp == NULL) {
+    return;
+  }
+  StaticJsonDocument<512> doc;
+  doc["event"] = "startop";
+  makeOp(doc);
+  String jsonStr;
+  
+  if (serializeJson(doc, jsonStr) == 0) {
+    dbg.println("Failed to serialize reply json");
+    return;
+  }
+  webSocket.broadcastTXT(jsonStr);
+}
+void broadcastStatus() {
+  
+  StaticJsonDocument<512> doc;
+  doc["event"] = "status";
+  doc["waterLevel"] = waterLevel.getWaterLevel();  
+
+  doc["litersIn"] = inFlowMeter.getLitersSinceReset();  
+  doc["litersOut"] = outFlowMeter.getLitersSinceReset();
+  doc["inValveOpen"] = inValve.isOn();
+  doc["outValveOpen"] = outValve.isOn();
+  makeOp(doc);
+  String jsonStr;
+  
+  if (serializeJson(doc, jsonStr) == 0) {
+    dbg.println("Failed to serialize reply json");
+    return;
+  }
+  webSocket.broadcastTXT(jsonStr);
+  dbg.println("broadcast status");
 }
 
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length) { 
-  dbg.println("got a websocket msg");
+  
+  if (type == WStype_CONNECTED) {
+    dbg.println("got a websocket connection");
+    return;
+  }
+  if (type == WStype_DISCONNECTED) {
+    dbg.println("a websocket disconnected");
+    return;
+  }
   if (type != WStype_TEXT) {
     dbg.println("got a non-text websocket message, ignoring it");
     return;
@@ -72,6 +171,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length)
   if (msgid != NULL) {
     doc["replyto"] = msgid;
   }
+  doc["event"] = "cmdresult";
   if (cmd == NULL) {
     doc["success"] = false;
     doc["error"] = "there was no cmd in ws message";
@@ -85,7 +185,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length)
       doc["error"] = "op has already finished";
     } else {
       dbg.println("aborting op");
-      currentFlowOp->abort();
+      abortOp();
       doc["success"] = true;
     }
   } else if (strcmp(cmd, "startop") == 0 ) {
@@ -104,29 +204,29 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length)
           doc["success"] = false;
           doc["error"] = "invalid value";
         } else {
-          newOp = new DrainToPercentOp(&waterLevel, &outValve, value);
+          newOp = new DrainToPercentOp(&waterLevel, &outValve, &inFlowMeter, &outFlowMeter, value);
           doc["success"] = true;
         }        
       } else if (strcmp(op, "Empty") == 0) {
-        newOp = new EmptyOp(&waterLevel, &outValve);
+        newOp = new EmptyOp(&waterLevel, &outValve, &inFlowMeter, &outFlowMeter);
         doc["success"] = true;
       } else if (strcmp(op, "FillToPercent") == 0) {
         if (isnan(value) || value <= 0 || value > 100) {
           doc["success"] = false;
           doc["error"] = "invalid value";
         } else {
-          newOp = new FillToPercentOp(&waterLevel, &inValve, value);
+          newOp = new FillToPercentEnsured(&waterLevel, &inValve, &inFlowMeter, &outFlowMeter, value);
           doc["success"] = true;
         }
       } else if (strcmp(op, "Flush") == 0) {
-        newOp = new FlushOp(&waterLevel, &inValve, &outValve);
+        newOp = new FlushOp(&waterLevel, &inValve, &outValve, &inFlowMeter, &outFlowMeter);
         doc["success"] = true;
       } else if (strcmp(op, "FlushAndFillToPercent") == 0) {
         if (isnan(value) || value <= 0 || value > 100) {
           doc["success"] = false;
           doc["error"] = "invalid value";
         } else {
-          newOp = new FlushAndFillToPercentOp(&waterLevel, &inValve, &outValve, value);
+          newOp = new FlushAndFillToPercentOp(&waterLevel, &inValve, &outValve, &inFlowMeter, &outFlowMeter, value);
           doc["success"] = true;          
         }        
       } else {
@@ -142,6 +242,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length)
         currentFlowOp = newOp;
         dbg.printf("Starting new op of type %d\n", currentFlowOp->getType());
         currentFlowOp->start();
+        broadcastOpStart();
       } 
     }
   } else if (strcmp(cmd, "get") == 0) {
@@ -178,6 +279,9 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length)
           case FlowOpType::FillToPercent:
             doc["currentOperation"]["type"] = "FillToPercent";
             break;
+          case FlowOpType::FillToPercentOnce:
+            doc["currentOperation"]["type"] = "FillToPercentOnce";
+            break;
           case FlowOpType::Flush:
             doc["currentOperation"]["type"] = "Flush";
             break;
@@ -189,6 +293,9 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length)
             break;
         }
         doc["currentOperation"]["status"] = currentFlowOp->isFailed()?"failed":(currentFlowOp->isDone()?"done":"running");
+        doc["currentOperation"]["opInFlow"] = currentFlowOp->opInFlow;
+        doc["currentOperation"]["opOutFlow"] = currentFlowOp->opOutFlow;
+        doc["currentOperation"]["opTotalDeltaFlow"] = currentFlowOp->opTotalDeltaFlow;
       } else {
         doc["currentOperation"]["type"] = "None";
       }
@@ -201,29 +308,29 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length)
       doc["success"] = true;
     }
   } else if (strcmp(cmd, "reset") == 0) {
-    if (isnan(value) || value <= 0) {
+    if (currentFlowOp != NULL && !currentFlowOp->isDone()) {
+      doc["success"] = false;
+      doc["error"] = "Can't reset while an op is in progress";
+    } else if (isnan(value) || value <= -1) {
       doc["success"] = false;
       doc["error"] = "invalid value";
     } else {
       if (strcmp(field, "litersIn")) {
+        if (value == -1) {
+          value = inFlowMeter.getLitersSinceReset();
+        }
         inFlowMeter.resetFrom(value);
         doc["success"] = true;
       } else if (strcmp(field, "litersOut")) {
+        if (value == -1) {
+          value = inFlowMeter.getLitersSinceReset();
+        }
         outFlowMeter.resetFrom(value);
         doc["success"] = true;
       } else {
         doc["success"] = false;
         doc["error"] = "unknown field";
       }
-    }
-
-  } else if (strcmp(cmd, "fillToPercent") == 0) {
-    if (isnan(value) || value <= 0) {
-      doc["success"] = false;
-      doc["error"] = "invalid value";
-    } else {
-
-
     }
   } else {
     doc["success"] = false;
@@ -243,54 +350,34 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length)
 
 void setup() {
   Serial.begin(9600);
-  
-  dbg.println("Starting Wifi...");
-  WiFi.onEvent(wifi_event);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  WiFi.setAutoReconnect(true);
-  
-  dbg.println("Setting up OTA...");
-  ArduinoOTA.setPort(3232);
-  ArduinoOTA.setRebootOnSuccess(true);
-  ArduinoOTA.onStart([]() {
-      dbg.printf("Start updating\n");
-      outValve.setOn(false);
-      inValve.setOn(false);
-    });
-    ArduinoOTA.onEnd([]() {
-      dbg.println("Update End");
-    });
-    ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-      dbg.printf("Progress: %u%%\r", (progress / (total / 100)));
-    });
-    ArduinoOTA.onError([](ota_error_t error) {
-      dbg.printf("Error[%u]: ", error);
-      if (error == OTA_AUTH_ERROR) dbg.println("Auth Failed");
-      else if (error == OTA_BEGIN_ERROR) dbg.println("Begin Failed");
-      else if (error == OTA_CONNECT_ERROR) dbg.println("Connect Failed");
-      else if (error == OTA_RECEIVE_ERROR) dbg.println("Receive Failed");
-      else if (error == OTA_END_ERROR) dbg.println("End Failed");
-    });
-  ArduinoOTA.begin();
+  inValve.setOn(false);
+  outValve.setOn(false);
+  growbotCommonSetup(MDNS_NAME, WIFI_SSID, WIFI_PASSWORD, []() {
+            dbg.println("Update starting, turning off valves");
+            inValve.setOn(false);
+            outValve.setOn(false);
+        });  
   dbg.println("Starting websocket...");
   webSocket.begin();
   webSocket.onEvent(webSocketEvent);
-  dbg.println("Starting mDNS...");
-  MDNS.begin(MDNS_NAME);
-  dbg.println("Done startup");
+
 }
 unsigned long last = millis();
 void loop() {
-  webSocket.loop();
-  ArduinoOTA.handle();
+  growbotCommonLoop();
+  webSocket.loop();  
   inValve.update();
   outValve.update();
   waterLevel.update();
+  //peace of mind, always shut the input valve off if water level is 100 or more
+  if (waterLevel.getWaterLevel() >= 100 && inValve.isOn()) {
+    dbg.eprintln("Water level is at max but input valve is on!  Turning it off");
+    inValve.setOn(false);
+  }
   if (currentFlowOp != NULL && !currentFlowOp->isDone()) {
     currentFlowOp->handle();
     if (currentFlowOp->isDone()) {
-      //just finished
-      
+      //just finished      
       if (currentFlowOp->isFailed()) {
         //er.. failed
         dbg.println("op just failed");
@@ -299,13 +386,17 @@ void loop() {
         dbg.println("op just succeeded");
         
       }
+      broadcastOpComplete();
     }
   }
   if (millis() - last > 5000) {
     dbg.printf("avg water level: %f\n", waterLevel.getWaterLevel());
     dbg.printf("In Flow: %f\n", inFlowMeter.getLitersSinceReset());
+    dbg.printf("In ticks: %d\n", inFlowMeter.getPulseCount());
     dbg.printf("Out Flow: %f\n", outFlowMeter.getLitersSinceReset());
+    dbg.printf("Out ticks: %d\n", outFlowMeter.getPulseCount());
     dbg.printf("wifi RSSI: %d\n", WiFi.RSSI());
+    broadcastStatus();
     last = millis();
   }
   

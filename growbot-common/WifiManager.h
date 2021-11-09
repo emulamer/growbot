@@ -1,5 +1,5 @@
+#include <Arduino.h>
 #include <WiFi.h>
-#include <Ticker.h>
 #include <ArduinoOTA.h>
 #include "DebugUtils.h"
 #ifndef WIFIMANAGER_H
@@ -10,9 +10,10 @@ class WifiManager {
     private:
         const char* ssid;
         const char* password;
+        const char* hostname;
         unsigned long lastReportStamp = 0;
-        Ticker wifiReconnectTimer;
         IPAddress emptyip = IPAddress(0,0,0,0);
+        unsigned long nextReconnectStamp = 0;
         void connectWifi() {
             if (!WiFi.isConnected() || WiFi.localIP() == emptyip) {
                 WiFi.mode(WIFI_STA);
@@ -27,29 +28,33 @@ class WifiManager {
         }
         void onWifiGotIP(WiFiEvent_t event) {
             dbg.printf("Wifi got IP %s\n",WiFi.localIP().toString().c_str());
-            ArduinoOTA.begin();
-            dbg.println("Started up OTA update listener");
             dbg.wifiIsReady();
             dbg.println("Set wifi ready for debug");
         }
 
         void onWifiDisconnect(WiFiEvent_t event) {
             dbg.println("Wifi disconnected");
-            wifiReconnectTimer.once(6, +[](WifiManager* instance) { instance->connectWifi(); }, this);
+            nextReconnectStamp = millis() + 6000;
         }
 
     public: 
-        WifiManager(const char* defaultSSID, const char* defaultPassword) {
-            this->ssid = defaultSSID;
-            this->password = defaultPassword;
+        WifiManager() {
             WiFi.onEvent(std::bind(&WifiManager::onWifiGotIP, this, std::placeholders::_1), SYSTEM_EVENT_STA_GOT_IP);  
             WiFi.onEvent(std::bind(&WifiManager::onWifiDisconnect, this, std::placeholders::_1), SYSTEM_EVENT_STA_DISCONNECTED);
             WiFi.onEvent(std::bind(&WifiManager::onWifiConnect, this, std::placeholders::_1, std::placeholders::_2), SYSTEM_EVENT_STA_CONNECTED);
         }
-        void init() {
+        void init(const char* hostname, const char* defaultSSID, const char* defaultPassword) {
+            this->ssid = defaultSSID;
+            this->password = defaultPassword;
+            this->hostname = hostname;
+            WiFi.hostname(hostname);
             connectWifi();
         }
         void handle() {
+            if (nextReconnectStamp > 0 && millis() - nextReconnectStamp > 0) {
+                nextReconnectStamp = 0;
+                connectWifi();
+            }
             if (lastReportStamp < millis()) {
                 if (!WiFi.isConnected()) {
                     dbg.printf("Wifi SSID %s not connected!\n", this->ssid)    ;

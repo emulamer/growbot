@@ -21,7 +21,7 @@ class WaterLevel {
         ESP32AnalogRead adcRef;
         ESP32AnalogRead adcVal;
         int sampleIntervalMS;
-        float readWaterLevel() {
+        float readWaterLevel(int sampleCount = WATERLEVEL_READ_COUNT) {
             float refRead = 0;
             float valRead = 0;
             for (int i = 0; ; i++) {
@@ -29,7 +29,7 @@ class WaterLevel {
                 float val = adcVal.readVoltage();
                 refRead += ref;
                 valRead += val;
-                if (i == WATERLEVEL_READ_COUNT-1) {
+                if (i == sampleCount-1) {
                     break;
                 }
             }
@@ -66,7 +66,10 @@ class WaterLevel {
         }
 
         float getImmediateLevel() {
-            return readWaterLevel();
+            float sum = readWaterLevel();
+            delay(50);
+            sum += readWaterLevel();
+            return sum/2.0;
         }
 
         float getWaterLevel() {

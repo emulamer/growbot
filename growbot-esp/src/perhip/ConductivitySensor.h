@@ -1,7 +1,7 @@
 
 #include "EzoSensor.h"
 #include "../GrowbotData.h"
-#include "../DebugUtils.h"
+#include <DebugUtils.h>
 #ifndef CONDUCTIVITYSENSOR_H
 #define CONDUCTIVITYSENSOR_H
 class ConductivitySensor : public EzoSensor {
@@ -29,13 +29,13 @@ class ConductivitySensor : public EzoSensor {
                 this->board->send_cmd("O,TDS,1");
                 delay(300);
                 if (this->recCheck()) {
-                    dbg.print(this->name);
-                    dbg.print(": sensor responded to TDS enable with: ");
-                    dbg.println(this->buffer);
+                    dbg.dprint(this->name);
+                    dbg.dprint(": sensor responded to TDS enable with: ");
+                    dbg.dprintln(this->buffer);
                     this->isOk = true;
                 } else {
-                    dbg.print(this->name);
-                    dbg.print(": sensor failed to enable TDS");
+                    dbg.eprint(this->name);
+                    dbg.eprint(": sensor failed to enable TDS");
                     this->isOk = false;
                 }
                 //disable EC output
@@ -43,13 +43,13 @@ class ConductivitySensor : public EzoSensor {
                 this->board->send_cmd("O,EC,0");
                 delay(300);
                 if (this->recCheck()) {
-                    dbg.print(this->name);
-                    dbg.print(": sensor responded to EC disable with: ");
-                    dbg.println(this->buffer);
+                    dbg.dprint(this->name);
+                    dbg.dprint(": sensor responded to EC disable with: ");
+                    dbg.dprintln(this->buffer);
                     this->isOk = true;
                 } else {
-                    dbg.print(this->name);
-                    dbg.print(": sensor failed to disable EC");
+                    dbg.eprint(this->name);
+                    dbg.eprint(": sensor failed to disable EC");
                     this->isOk = false;
                 }
             }

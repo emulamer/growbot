@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include <Wire.h>
-#include "../DebugUtils.h"
+#include <DebugUtils.h>
 
 #ifndef I2CMULTIPLEXER_H
 #define I2CMULTIPLEXER_H

@@ -1,9 +1,12 @@
+#define LOG_UDP_PORT 44444
+#include <GrowbotCommon.h>
 #include <Arduino.h>
+#include <ArduinoOTA.h>
 #include <Wire.h>
 #include "GrowbotData.h"
 #include "DataConnection.h"
 #include "Config.h" //all the config stuff is in here
-#include "DebugUtils.h"
+#include <DebugUtils.h>
 #include <Wire.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -19,17 +22,18 @@
 #include "Thermostat.h"
 #include "perhip/SwitcherooWiFi.h"
 #include "TimeKeeper.h" 
-#include <ArduinoOTA.h>
 #include "soc/rtc_wdt.h"
 #include <driver/periph_ctrl.h>
-#include "WifiManager.h"
+#include "../growbot-common/WifiManager.h"
 #include "MQTTDataConnection.h"
 #include "EEPROMNVStore.h"
 #include "PumpControl.h"
-WifiManager wifiMgr(WIFI_SSID, WIFI_PASSWORD);
+#include <esp_task_wdt.h>
+#include <Ticker.h>
 MQTTDataConnection dataConn(MQTT_HOST, MQTT_PORT, MQTT_TOPIC, MQTT_CONFIG_TOPIC);
 EEPROMNVStore nvStore;
 
+#define WATCHDOG_REBOOT_SEC 45
 
 #define EC_CALIBRATION_LOW 12880
 #define EC_CALIBRATION_HIGH 80000
@@ -73,21 +77,21 @@ void sendState() {
     state.data = data;
     state.current_mode = operating_mode;
     if (!dataConn.sendState(state)) {
-      dbg.printf("State was not sent!\n");
+      dbg.wprintf("State was not sent!\n");
     }
-    dbg.printf("sending state, lights flag is: %d\n", state.data.lightsOn);
+    dbg.dprintf("sending state, lights flag is: %d\n", state.data.lightsOn);
 }
 void doImportantTicks();
 Sensorama sensorama = Sensorama(i2cBus, i2cBus2, &i2cMultiplexer, &data, &config, doImportantTicks);
 void doImportantTicks() {
   bool doSendState = false;
-  ArduinoOTA.handle();
-  wifiMgr.handle();
+  growbotCommonLoop();
   doSendState = doSendState || lightsTimekeeper->handle();
   doSendState = doSendState || roomFansTimekeeper->handle();
   powerCtl.handle();
   dataConn.handle();
   sensorama.handle();
+  switcheroo->handle();
   if (doSendState) {
     sendState();
   }
@@ -183,9 +187,6 @@ void debug_scan_i2c(TwoWire *wire) {
 }
 
 
-
-
-
 void updateFromConfig() {
 
   sensorama.configChanged();
@@ -201,6 +202,8 @@ void updateFromConfig() {
   delay(50);
   powerCtl.setPowerToggle(POWER_INTAKE_FAN_PORT, config.intakeFanOn);
   delay(50);
+  switcheroo->setPowerToggle(SWITCHEROO_BUBBLES_PORT, config.bubblesOn);
+  data.bubblesOn = config.bubblesOn;
 
   //set power levels
   powerCtl.setChannelLevel(POWER_EXHAUST_FAN_PORT, config.exhaustFanPercent);
@@ -213,7 +216,6 @@ void updateFromConfig() {
   roomFansTimekeeper->handle(true);
  }
 
-#ifdef ARDUINO_ARCH_ESP32
 void reset_system()
 {
     rtc_wdt_protect_off();      //Disable RTC WDT write protection
@@ -223,13 +225,6 @@ void reset_system()
     rtc_wdt_enable();           //Start the RTC WDT timer
     rtc_wdt_protect_on();       //Enable RTC WDT write protection
 }
-#endif
-#ifdef ARDUINO_ARCH_RP2040
-void reset_system() {
-  //todo:??????
-}
-#endif
-
 
 
 void onNewConfig(GrowbotConfig &newConfig) {
@@ -243,24 +238,24 @@ void onNewConfig(GrowbotConfig &newConfig) {
 void onModeChange(byte mode) {
   if (operating_mode == GROWBOT_MODE_NORMAL) {
     if (mode == GROWBOT_MODE_CALIBRATING_PH_SENSOR) {
-      dbg.println("Entering pH calibration mode");
+      dbg.dprintln("Entering pH calibration mode");
       operating_mode = GROWBOT_MODE_CALIBRATING_PH_SENSOR;
     } else if (mode == GROWBOT_MODE_CALIBRATING_TDS_SENSOR) {
-      dbg.println("Entering EC calibration mode");
+      dbg.dprintln("Entering EC calibration mode");
       operating_mode = GROWBOT_MODE_CALIBRATING_TDS_SENSOR;
     } else if (mode == GROWBOT_MODE_REBOOT) {
-      dbg.println("Reset system mode received, resetting now");
+      dbg.dprintln("Reset system mode received, resetting now");
         reset_system();
     } else {
-      dbg.printf("Invalid mode transition from normal to mode %d\n", mode);
+      dbg.wprintf("Invalid mode transition from normal to mode %d\n", mode);
       return;
     }
   } else if (operating_mode == GROWBOT_MODE_CALIBRATING_PH_SENSOR) {
       if (mode == GROWBOT_MODE_CALIBRATING_PH_SENSOR_SET_MID) {
-        dbg.println("in ph calibration mode, got message to set the mid point calibration");
+        dbg.dprintln("in ph calibration mode, got message to set the mid point calibration");
         //todo: actual mid point calib
         if (!((PhSensor*)sensorama.getSensor("waterData.ph"))->calibrate(EZO_CALIBRATE_MID, PH_CALIBRATION_MID)) {
-          dbg.println("CALIBRATION FAILURE!!!");
+          dbg.eprintln("CALIBRATION FAILURE!!!");
           return;
         }
         operating_mode = GROWBOT_MODE_CALIBRATING_PH_SENSOR_SET_MID;
@@ -276,40 +271,40 @@ void onModeChange(byte mode) {
         dbg.println("in ph calibration mid set mode, got message to set the low point calibration");
         //todo: actual low point calib
         if (!((PhSensor*)sensorama.getSensor("waterData.ph"))->calibrate(EZO_CALIBRATE_LOW, PH_CALIBRATION_LOW)) {
-          dbg.println("CALIBRATION FAILURE!!!");
+          dbg.eprintln("CALIBRATION FAILURE!!!");
           return;
         }
         operating_mode = GROWBOT_MODE_CALIBRATING_PH_SENSOR_SET_LOW;
       } else if (mode == GROWBOT_MODE_NORMAL) {
-        dbg.println("pH calibration canceled.  calibration is busted now!");
+        dbg.wprintln("pH calibration canceled.  calibration is busted now!");
         operating_mode = GROWBOT_MODE_NORMAL;
       } else {
-        dbg.printf("Invalid mode transition from ph calibration mid to %d\n", mode);
+        dbg.wprintf("Invalid mode transition from ph calibration mid to %d\n", mode);
         return;
       }
   } else if (operating_mode == GROWBOT_MODE_CALIBRATING_PH_SENSOR_SET_LOW) {
       if (mode == GROWBOT_MODE_CALIBRATING_PH_SENSOR_SET_HIGH) {
-        dbg.println("in ph calibration low set mode, got message to set the high point calibration");
+        dbg.dprintln("in ph calibration low set mode, got message to set the high point calibration");
         //todo: actual high point calibration here
         //switch back to normal mode from here
         if (!((PhSensor*)sensorama.getSensor("waterData.ph"))->calibrate(EZO_CALIBRATE_HIGH, PH_CALIBRATION_HIGH)) {
-          dbg.println("CALIBRATION FAILURE!!!");
+          dbg.eprintln("CALIBRATION FAILURE!!!");
           return;
         }
         operating_mode = GROWBOT_MODE_NORMAL;
       } else if (mode == GROWBOT_MODE_NORMAL) {
-        dbg.println("pH calibration canceled.  calibration is busted now!");
+        dbg.wprintln("pH calibration canceled.  calibration is busted now!");
         operating_mode = GROWBOT_MODE_NORMAL;
       } else {
-        dbg.printf("Invalid mode transition from ph calibration low to %d\n", mode);
+        dbg.wprintf("Invalid mode transition from ph calibration low to %d\n", mode);
         return;
       }
   } else if (operating_mode == GROWBOT_MODE_CALIBRATING_TDS_SENSOR) {
     if (mode == GROWBOT_MODE_CALIBRATING_TDS_SENSOR_SET_DRY) {
-        dbg.println("in ec calibration mode, got message to set the dry point calibration");
+        dbg.dprintln("in ec calibration mode, got message to set the dry point calibration");
         //todo: actual ec dry calib
         if (!((ConductivitySensor*)sensorama.getSensor("waterData.tds"))->calibrate(EZO_CALIBRATE_DRY, 0)) {
-          dbg.println("CALIBRATION FAILURE!!!");
+          dbg.eprintln("CALIBRATION FAILURE!!!");
           return;
         }
         operating_mode = GROWBOT_MODE_CALIBRATING_TDS_SENSOR_SET_DRY;
@@ -317,39 +312,39 @@ void onModeChange(byte mode) {
         dbg.println("EC calibration canceled");
         operating_mode = GROWBOT_MODE_NORMAL;
       } else {
-        dbg.printf("Invalid mode transition from EC calibration start to %d\n", mode);
+        dbg.wprintf("Invalid mode transition from EC calibration start to %d\n", mode);
         return;
       }
   } else if (operating_mode == GROWBOT_MODE_CALIBRATING_TDS_SENSOR_SET_DRY) {
     if (mode == GROWBOT_MODE_CALIBRATING_TDS_SENSOR_SET_LOW) {
-        dbg.println("in ec calibration mode, got message to set the low point calibration");
+        dbg.dprintln("in ec calibration mode, got message to set the low point calibration");
         //todo: actual ec low calib
         if (!((ConductivitySensor*)sensorama.getSensor("waterData.tds"))->calibrate(EZO_CALIBRATE_LOW, EC_CALIBRATION_LOW)) {
-          dbg.println("CALIBRATION FAILURE!!!");
+          dbg.eprintln("CALIBRATION FAILURE!!!");
           return;
         }
         operating_mode = GROWBOT_MODE_CALIBRATING_TDS_SENSOR_SET_LOW;
       } else if (mode == GROWBOT_MODE_NORMAL) {
-        dbg.println("EC calibration canceled.. ec calibration is hosed!");
+        dbg.wprintln("EC calibration canceled.. ec calibration is hosed!");
         operating_mode = GROWBOT_MODE_NORMAL;
       } else {
-        dbg.printf("Invalid mode transition from EC calibration dry to %d\n", mode);
+        dbg.wprintf("Invalid mode transition from EC calibration dry to %d\n", mode);
         return;
       }
   } else if (operating_mode == GROWBOT_MODE_CALIBRATING_TDS_SENSOR_SET_LOW) {
     if (mode == GROWBOT_MODE_CALIBRATING_TDS_SENSOR_SET_HIGH) {
-        dbg.println("in ec calibration mode, got message to set the high point calibration");
+        dbg.dprintln("in ec calibration mode, got message to set the high point calibration");
         //todo: actual ec high calib
         if (!((ConductivitySensor*)sensorama.getSensor("waterData.tds"))->calibrate(EZO_CALIBRATE_HIGH, EC_CALIBRATION_HIGH)) {
-          dbg.println("CALIBRATION FAILURE!!!");
+          dbg.eprintln("CALIBRATION FAILURE!!!");
           return;
         }
         operating_mode = GROWBOT_MODE_NORMAL;
       } else if (mode == GROWBOT_MODE_NORMAL) {
-        dbg.println("EC calibration canceled.. ec calibration is hosed!");
+        dbg.wprintln("EC calibration canceled.. ec calibration is hosed!");
         operating_mode = GROWBOT_MODE_NORMAL;
       } else {
-        dbg.printf("Invalid mode transition from EC calibration low to %d\n", mode);
+        dbg.wprintf("Invalid mode transition from EC calibration low to %d\n", mode);
         return;
       }
   }
@@ -359,7 +354,7 @@ void onModeChange(byte mode) {
 void updateThermostats() {
   chillerThermostat.handle();
 }
-#ifdef ARDUINO_ARCH_ESP32
+
 void setupIO() {
   periph_module_disable(PERIPH_I2C0_MODULE);
   periph_module_disable(PERIPH_I2C1_MODULE);
@@ -379,58 +374,29 @@ void setupIO() {
   periph_module_enable(PERIPH_I2C1_MODULE);
   Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN, I2C_FREQ);  
   Wire1.begin(I2C_2_SDA_PIN, I2C_2_SCL_PIN, I2C_FREQ);
-  ArduinoOTA.setPort(3232);
-  ArduinoOTA.setRebootOnSuccess(false);
-  ArduinoOTA
-    .onStart([]() {
-      dbg.printf("Start updating\n");
-    })
-    .onEnd([]() {
-      dbg.println("Update End, setting watchdog");
-      reset_system();
-    })
-    .onProgress([](unsigned int progress, unsigned int total) {
-      dbg.printf("Progress: %u%%\r", (progress / (total / 100)));
-    })
-    .onError([](ota_error_t error) {
-      dbg.printf("Error[%u]: ", error);
-      if (error == OTA_AUTH_ERROR) dbg.println("Auth Failed");
-      else if (error == OTA_BEGIN_ERROR) dbg.println("Begin Failed");
-      else if (error == OTA_CONNECT_ERROR) dbg.println("Connect Failed");
-      else if (error == OTA_RECEIVE_ERROR) dbg.println("Receive Failed");
-      else if (error == OTA_END_ERROR) dbg.println("End Failed");
-    });
     chillerThermostat.init(&config.waterChillerThermostat, &data.controlBucket.temperatureC,
       [](bool isOn, float value) { 
         if (isOn) {
-          dbg.printf("chiller thermostat is on \n");
+          dbg.dprintf("chiller thermostat is on \n");
           switcheroo->setPowerToggle(SWITCHEROO_CHILLER_PORT, true);
           data.waterChillerStatus = 100;
         } else {
-          dbg.printf("chiller thermostat is off \n");
+          dbg.dprintf("chiller thermostat is off \n");
           switcheroo->setPowerToggle(SWITCHEROO_CHILLER_PORT, false);
           data.waterChillerStatus = 0;
         }
       }
     );
     switcheroo->init();
-    dbg.print("Wifi...");
-    wifiMgr.init();
-    dbg.println("connecting.");
+    growbotCommonSetup(MDNS_NAME, WIFI_SSID, WIFI_PASSWORD);
 }
-#elif defined(PICO_SDK_VERSION_MAJOR)
-void setupIO() {
-  //stupid garbage implementation of Wire.h, can't even change the pins
-  i2cBus->setClock(I2C_FREQ);
-  i2cBus->begin();  
-}
-#endif
+
 void setup() {  
+  dbg.setLogLevel(LOG_LEVEL_WARN);
   Serial.begin(115200);
   nvStore.init();
   dbg.println("Growbot v.01 starting up...");
   setupIO();
-  delay(3000);
   powerCtl.init();
   dbg.print("Loading config...");
   nvStore.readConfig(&config);
@@ -450,6 +416,7 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH);
   delay(2000);
+  growbotCommonLoop();
   sensorama.update();
   delay(1000);
 }
@@ -469,13 +436,11 @@ void loop() {
   doImportantTicks();
   if (operating_mode == GROWBOT_MODE_NORMAL) {
     if (tickNow()) {
-// debug_scan_i2c(i2cBus, &i2cMultiplexer);
-//debug_scan_i2c(i2cBus2, &i2cMultiplexer);
       sensorama.update();
       updateThermostats();
       pumpControl->handle();
       sendState();
-      dbg.printf("Waiting to tick again for %d\n", config.samplingIntervalMS);
+      dbg.dprintf("Waiting to tick again for %d\n", config.samplingIntervalMS);
     }
   } else if (operating_mode == GROWBOT_MODE_CALIBRATING_PH_SENSOR ||
              operating_mode == GROWBOT_MODE_CALIBRATING_PH_SENSOR_SET_MID ||

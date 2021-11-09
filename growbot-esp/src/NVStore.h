@@ -21,6 +21,8 @@
                 config->samplingIntervalMS = 10000;
                 config->exhaustFanOn = true;
                 config->intakeFanOn = true;
+                config->pumpOn = true;
+                config->bubblesOn = true;
                 config->roomFanSchedule.status = 2;
                 config->roomFanSchedule.turnOffGmtHourMin = 0;
                 config->roomFanSchedule.turnOnGmtHourMin = 0;

@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include "I2CMultiplexer.h"
-#include "../DebugUtils.h"
+#include <DebugUtils.h>
 #include "../SensorBase.h"
 #include "../GrowbotData.h"
 #include <Ticker.h>

@@ -4,7 +4,7 @@
 #include <WiFi.h>
 #include "GrowbotData.h"
 #include "perhip/SwitcherooWiFi.h"
-#include "DebugUtils.h"
+#include <DebugUtils.h>
 
 #ifndef TIMEKEEPER_H
 #define TIMEKEEPER_H
@@ -44,18 +44,18 @@ class TimeKeeper {
             }
             if (!TimeKeeper::initted) {
                 if (WiFi.status() == WL_CONNECTED) {
-                    dbg.printf("TimeKeeper: Initting now that Wifi is available\n");
+                    dbg.dprintf("TimeKeeper: Initting now that Wifi is available\n");
                     TimeKeeper::timeClient = new NTPClient(TimeKeeper::ntpUdp, "pool.ntp.org");
                     TimeKeeper::timeClient->begin();
                     TimeKeeper::initted = true;
                 } else {
-                    dbg.printf("TimeKeeper isn't initted yet because Wifi isn't available yet\n");
+                    dbg.wprintf("TimeKeeper isn't initted yet because Wifi isn't available yet\n");
                     return false;
                 }
             }
             TimeKeeper::timeClient->update();
             int timeNow = (this->timeClient->getHours() * 100) + this->timeClient->getMinutes();    
-            dbg.printf("TimeKeeper: tick at time %d\n", timeNow);
+            dbg.dprintf("TimeKeeper: tick at time %d\n", timeNow);
             bool on = false;
             if (this->schedule->status == 0) {
                 if (this->schedule->turnOffGmtHourMin < this->schedule->turnOnGmtHourMin) {
@@ -80,7 +80,7 @@ class TimeKeeper {
             
             
             if (this->switcher->getPowerToggle(this->portNum) != on) {
-                dbg.printf("TimeKeeper: changing port %d to state %s\n", this->portNum, on?"ON":"OFF");
+                dbg.dprintf("TimeKeeper: changing port %d to state %s\n", this->portNum, on?"ON":"OFF");
                 ret = true;
             }
             this->switcher->setPowerToggle(this->portNum, on);

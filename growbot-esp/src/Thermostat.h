@@ -25,17 +25,17 @@ class FixedThermostat : public Thermostat {
         }
         virtual void handle() {
             if (settings->mode == ThermostatMode::Off) {
-                dbg.printf("Theromostat set off, currentState set to false\n");
+                dbg.dprintf("Theromostat set off, currentState set to false\n");
                 currentState = false;
             } else if (settings->mode == ThermostatMode::On) {
-                dbg.printf("Theromostat set on, currentState set to false\n");
+                dbg.dprintf("Theromostat set on, currentState set to false\n");
                 currentState = true;
             } else {
                 if (*sourceValue < settings->minValue && currentState == true) {
-                    dbg.printf("Theromostat value %f dropped below min %f, currentState set to false\n", *sourceValue, settings->minValue);
+                    dbg.dprintf("Theromostat value %f dropped below min %f, currentState set to false\n", *sourceValue, settings->minValue);
                     currentState = false;
                 } else if (*sourceValue > settings->maxValue && currentState == false) {
-                    dbg.printf("Theromostat value %f went above max %f, currentState set to true\n", *sourceValue, settings->maxValue);
+                    dbg.dprintf("Theromostat value %f went above max %f, currentState set to true\n", *sourceValue, settings->maxValue);
                     currentState = true;
                 }
             }

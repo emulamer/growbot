@@ -18,9 +18,11 @@ class FlowMeter {
             attachInterruptArg(this->pin, FlowMeter::pulseCounter, this, FALLING);
         }
         float getLitersSinceReset() {
-            dbg.printf("ticks: %d\n", this->pulseCount);
             float gals = ((float)pulseCount)/ ((float)ppl);
             return gals;
+        }
+        uint32_t getPulseCount() {
+            return this->pulseCount;
         }
 
         void resetFrom(float liters) {

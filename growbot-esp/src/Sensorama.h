@@ -52,7 +52,7 @@
 
 #define MAKEWATERTEMP(NAME, TYPE, ADDR) new SensorHolder(\
                 new TYPE(ADDR), \
-                {new ReadingNormalizer(#NAME, 10, 3, .5f, 0, 70)},\
+                {new ReadingNormalizer(#NAME, 10, 12, .5f, 0, 70)},\
                 #NAME,\
                 1,\
                 { &this->data->NAME },\
@@ -73,6 +73,16 @@
                 1,\
                 { &this->data->NAME },\
                 NULL)
+static bool millisElapsed(unsigned long ms) {
+            if (ms <= millis()) {
+            return true;
+            }
+            //todo: need to make sure this handles the 52 day wrap here or things will break
+            if (abs(ms - millis()) > 10000000) {
+            return true;
+            }
+            return false;
+        }
 
 struct SensorHolder {
     SensorHolder(SensorBase* _sensor, std::initializer_list<ReadingNormalizer*> _normalizers, const char* _name, byte _valueCount, std::initializer_list<float*> _valueAddrs, void* _configAddr) {
@@ -120,11 +130,11 @@ class Sensorama {
 
            //control bucket sensors
            this->sensors.push_back(MAKEWATERTEMP(controlBucket.temperatureC, DallasWaterTempSensor, WT_CONTROL_BUCKET_ADDRESS));
-        //    this->sensors.push_back(new SensorHolder(new WSWaterLevel("growbot-flow", 8118),
-        //                                             {new ReadingNormalizer("controlBucket.waterLevelPercent", 10, 3, .5f, 0, 100)},
-        //                                             "controlBucket.waterLevelPercent", 1,
-        //                                             { &this->data->controlBucket.waterLevelPercent }, NULL));
-           this->sensors.push_back(MAKEWATERLEVEL(controlBucket.waterLevelPercent, CONTROL_WATER_LEVEL_MX_PORT));
+           this->sensors.push_back(new SensorHolder(new WSWaterLevel("growbot-flow", 8118),
+                                                    {new ReadingNormalizer("controlBucket.waterLevelPercent", 10, 3, .5f, 0, 100)},
+                                                    "controlBucket.waterLevelPercent", 1,
+                                                    { &this->data->controlBucket.waterLevelPercent }, NULL));
+           //this->sensors.push_back(MAKEWATERLEVEL(controlBucket.waterLevelPercent, CONTROL_WATER_LEVEL_MX_PORT));
 
            //light sensors
            this->sensors.push_back(MAKELUX(luxAmbient1, 15));
@@ -157,14 +167,14 @@ class Sensorama {
                     return sensor->sensor;
                 }
             }
-            dbg.printf("Sensorama: getSensor(%s) failed!  No sensor with that name!", name);
+            dbg.wprintf("Sensorama: getSensor(%s) failed!  No sensor with that name!", name);
             return NULL;
         }
         bool updateOne(const char* name, bool normalize = true) {
             bool ok = false;
             for (auto sensor : this->sensors) {
                 if (strcmp(name, sensor->name) == 0) {
-                    dbg.printf("Sensorama: updateOne(%s)...\n", sensor->name);
+                    dbg.dprintf("Sensorama: updateOne(%s)...\n", sensor->name);
                     sensor->sensor->preupdate(this->data);
                     DeferredReading reading = sensor->sensor->startRead();
                     unsigned long waitTime = reading.deferUntil - millis();
@@ -174,12 +184,12 @@ class Sensorama {
                     
                     sensor->sensor->finishRead(reading);
                     if (!reading.isSuccessful) {
-                        dbg.printf("Sensorama: updateOne(%s) failed!  Will use NaN!\n", sensor->name);
+                        dbg.wprintf("Sensorama: updateOne(%s) failed!  Will use NaN!\n", sensor->name);
                         for (byte x = 0; x < MAX_READING_COUNT; x++) {
                             reading.values[x] = NAN;
                         }
                     } else {
-                        dbg.printf("Sensorama: updateOne(%s) read succeeded\n", sensor->name);
+                        dbg.dprintf("Sensorama: updateOne(%s) read succeeded\n", sensor->name);
                         ok = true;
                     }
                     
@@ -190,16 +200,16 @@ class Sensorama {
                         } else {
                             *sensor->valueAddrs[x] = reading.values[x];
                         }
-                        dbg.printf("Sensorama: %s OK\n", sensor->name);
+                        dbg.dprintf("Sensorama: %s OK\n", sensor->name);
                     }
                     return ok;
                 }
             }
-            dbg.printf("Sensorama: couldn't updateOne because name %s wasn't found!\n", name);
+            dbg.wprintf("Sensorama: couldn't updateOne because name %s wasn't found!\n", name);
             return false;
         }
         void update() {
-            dbg.println("Sensorama: starting update");
+            dbg.dprintln("Sensorama: starting update");
             for (auto sensor : this->sensors) sensor->sensor->preupdate(this->data);
             int sensorCount = this->sensors.size();
             DeferredReading* readings = (DeferredReading*)malloc(sensorCount * sizeof(DeferredReading));
@@ -210,7 +220,7 @@ class Sensorama {
             }
             
             unsigned long start = millis();
-            dbg.printf("Sensorama: waiting for readings to complete...\n");
+            dbg.dprintf("Sensorama: waiting for readings to complete...\n");
 
             bool outstanding = false;
             
@@ -218,7 +228,7 @@ class Sensorama {
                 outstanding = false;
                 for (int i = 0; i < sensorCount; i++) {
                     if (millis() - start > MAX_READ_TIME_MS) {
-                        dbg.printf("Sensorama: ERROR!  Read loop timed out!");
+                        dbg.eprintf("Sensorama: ERROR!  Read loop timed out!");
                         break;
                     }
                     auto reading = &readings[i];
@@ -251,19 +261,19 @@ class Sensorama {
                 auto reading = &readings[i];
                 auto sensor = this->sensors[i];
                 if (reading->isSuccessful) {
-                     dbg.printf("Sensorama: %s OK\n", sensor->name);
+                     dbg.dprintf("Sensorama: %s OK\n", sensor->name);
                 } else {
-                    dbg.printf("Sensorama: %s FAILED\n", sensor->name);
+                    dbg.eprintf("Sensorama: %s FAILED\n", sensor->name);
                 }
                 delay(10);            
             }
             free(readings);
             unsigned long end = millis();
-            dbg.printf("Sensorama: finished updating sensors in %lu ms\n", (end - start));
+            dbg.dprintf("Sensorama: finished updating sensors in %lu ms\n", (end - start));
         }
         void updateSync() {
             bool* okays = (bool*)malloc(this->sensors.size());
-            dbg.println("Sensorama: starting update");
+            dbg.dprintln("Sensorama: starting update");
             unsigned long start = millis();
             int ctr = 0;
             for (auto sensor : this->sensors) {
@@ -271,10 +281,15 @@ class Sensorama {
                 ctr++;
             }
             unsigned long end = millis();
-            dbg.printf("Sensorama: finished updating sensors in %lu ms\n", (end - start));
+            dbg.dprintf("Sensorama: finished updating sensors in %lu ms\n", (end - start));
             delay(200);
             for(uint i = 0; i < this->sensors.size(); i++) {
-                dbg.printf("Sensorama: %s %s\n", this->sensors[i]->name, okays[i]?"OK":"FAILED");
+                if (okays[i]) {
+                    dbg.dprintf("Sensorama: %s OK\n", this->sensors[i]->name);
+                } else {
+                    dbg.eprintf("Sensorama: %s FAILED\n", this->sensors[i]->name);
+                }
+                
             }
             free(okays);
         }

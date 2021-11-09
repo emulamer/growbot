@@ -2,7 +2,7 @@
 #include <Ezo_i2c.h> 
 #include "../GrowbotData.h"
 #include "I2CMultiplexer.h"
-#include "../DebugUtils.h"
+#include <DebugUtils.h>
 #include "../SensorBase.h"
 
 #ifndef EZOSENSOR_H
@@ -25,6 +25,7 @@ class EzoSensor : public SensorBase {
         bool isMultiplexer;
         char* buffer;
         byte enPin;
+        float lastGoodTempCalibration = NAN;
         void doPlex() {
             if (this->isMultiplexer) {
                 this->plexer->setBus(this->busNum);
@@ -37,7 +38,7 @@ class EzoSensor : public SensorBase {
             if (status == Ezo_board::errors::SUCCESS) {
                 return true;
             } else {
-                dbg.printf("%s: sensor receive command failed with status code %d, buffer is %s\n", this->name, status, this->buffer);
+                dbg.eprintf("%s: sensor receive command failed with status code %d, buffer is %s\n", this->name, status, this->buffer);
                 return false;
             }
         }
@@ -55,7 +56,7 @@ class EzoSensor : public SensorBase {
                 this->board->send_cmd(this->buffer);
                 delay(1000);
                 if (!this->recCheck()) {
-                    dbg.printf("%s: read with temperature compensation failed on retry %d! Response: %s\n", this->name, i, this->buffer);
+                    dbg.eprintf("%s: read with temperature compensation failed on retry %d! Response: %s\n", this->name, i, this->buffer);
                 } else {
                     break;
                 }
@@ -82,7 +83,7 @@ class EzoSensor : public SensorBase {
                 this->board->send_cmd(this->buffer);
                 delay(1000);
                 if (!this->recCheck()) {
-                    dbg.println("set calibration point failed!  Trying again...");
+                    dbg.eprintln("set calibration point failed!  Trying again...");
                 } else {
                     success = true;
                     break;
@@ -119,10 +120,10 @@ class EzoSensor : public SensorBase {
             this->board->send_cmd("Status");
             delay(400);
             if (this->recCheck()) {
-                dbg.printf("%s: sensor passed status check and responded with: %s\n", this->name, this->buffer);
+                dbg.dprintf("%s: sensor passed status check and responded with: %s\n", this->name, this->buffer);
                 this->isOk = true;
             } else {
-                dbg.printf("%s: sensor failed init\n", this->name);
+                dbg.eprintf("%s: sensor failed init\n", this->name);
                 this->isOk = false;
             }
         }
@@ -132,12 +133,18 @@ class EzoSensor : public SensorBase {
         }
         void setWaterTempCompensation(float tempC) {
             if (isnan(tempC) || tempC <= 0 || tempC > 50) {
-                dbg.printf("Invalid temp provided for compensation: %f\n", tempC);
-                this->waterTempC = 25;
+                dbg.wprintf("Invalid temp provided for compensation: %f\n", tempC);
+                if (!isnan(lastGoodTempCalibration)) {
+                    dbg.wprintf("Using last known good water temp value of: %f\n", lastGoodTempCalibration);
+                    this->waterTempC = lastGoodTempCalibration;
+                } else {
+                    this->waterTempC = 25;
+                }
             } else {
                 this->waterTempC = tempC;
+                lastGoodTempCalibration = tempC;
             }
-            dbg.printf("Using temp provided for compensation: %f\n", tempC);
+            dbg.dprintf("Using temp provided for compensation: %f\n", tempC);
         }
         virtual DeferredReading startRead() {
             if (!this->isOk) {
@@ -157,14 +164,14 @@ class EzoSensor : public SensorBase {
         }
         virtual void finishRead(DeferredReading &reading) {
             if (!this->recCheck()) {
-                dbg.printf("%s: read with temperature compensation failed!\n", this->name);
+                dbg.eprintf("%s: read with temperature compensation failed!\n", this->name);
                 reading.isSuccessful = false;
                 reading.values[0] = NAN;
             } else {
                 reading.values[0] = atof(this->buffer);
                 reading.isSuccessful = true;
             }
-            dbg.printf("sensor %s responded with %s\n", this->name, this->buffer);
+            dbg.dprintf("sensor %s responded with %s\n", this->name, this->buffer);
             reading.isComplete = true;
         }
 };

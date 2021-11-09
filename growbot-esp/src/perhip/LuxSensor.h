@@ -3,7 +3,7 @@
 #include "I2CMultiplexer.h"
 #include "../GrowbotData.h"
 #include <Max44009.h>
-#include "../DebugUtils.h"
+#include <DebugUtils.h>
 #include "../SensorBase.h"
 #define LUX_SENSOR_ADDR 0x4a
 #ifndef LUXSENSOR_H
@@ -51,7 +51,7 @@ class Max44009Sensor : public LuxSensor {
             int err = this->myLux.getError();
             if (err != 0)
             {
-                dbg.printf("failed to init lux sensor: %d\n", err);
+                dbg.eprintf("failed to init lux sensor: %d\n", err);
                 this->isOk = false;
             } else {
                 this->isOk = true;
@@ -66,9 +66,9 @@ class Max44009Sensor : public LuxSensor {
             }
             this->doPlex();
             float lux = myLux.getLux();
-            dbg.printf("lux sensor returned value %f\r\n", lux);
+            dbg.dprintf("lux sensor returned value %f\r\n", lux);
             if (lux < 0) {
-                dbg.printf("lux sensor read error, code: %f\r\n", lux);
+                dbg.eprintf("lux sensor read error, code: %f\r\n", lux);
                 return NAN;
             }
             return lux;
@@ -81,7 +81,7 @@ class Max44009Sensor : public LuxSensor {
             this->doPlex();
             float lux = myLux.getLux();
             if (isnan(lux) || lux < 0) {
-                dbg.printf("lux sensor read error, code: %f\r\n", lux);
+                dbg.eprintf("lux sensor read error, code: %f\r\n", lux);
                 reading.values[0] = NAN;
                 reading.isSuccessful = false;
             } else {

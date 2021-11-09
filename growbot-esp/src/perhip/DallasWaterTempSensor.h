@@ -3,10 +3,12 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include "../Config.h"
-#include "../DebugUtils.h"
+#include <DebugUtils.h>
 #include "SensorBase.h"
 #ifndef DALLASWATERTEMPSENSOR_H
 #define DALLASWATERTEMPSENSOR_H
+
+#define ACCURACY_BITS 12
 
 #include <OneWire.h>
 #include <DallasTemperature.h>
@@ -20,21 +22,25 @@ class DallasWaterTempSensor : public SensorBase {
     private:
         DeviceAddress addr;
         bool isOk = false;
+        int errCount = 0;
     public:
         DallasWaterTempSensor(std::initializer_list<uint8_t> address) {
             assert(address.size() == 8);
             std::copy(address.begin(), address.end(), this->addr);
         }
         void init() {
+            digitalWrite(ONEWIRE_PIN, LOW);
+            delay(10);
+            digitalWrite(ONEWIRE_PIN, HIGH);
             onewire->begin(ONEWIRE_PIN);
             this->isOk = true;
             dallasTemp->setWaitForConversion(false);
+            dallasTemp->setResolution(ACCURACY_BITS);
             dallasTemp->begin();
             delay(200);
-            //dallasTemp->setResolution(12);
             this->isOk = dallasTemp->isConnected(this->addr);
             if (!this->isOk) {
-                dbg.printf("Dallas sensor at address %x %x %x %x %x %x %x %x is not connected!\n", this->addr[0], this->addr[1], this->addr[2], this->addr[3], this->addr[4], this->addr[5], this->addr[6], this->addr[7]);
+                dbg.eprintf("Dallas sensor at address %x %x %x %x %x %x %x %x is not connected!\n", this->addr[0], this->addr[1], this->addr[2], this->addr[3], this->addr[4], this->addr[5], this->addr[6], this->addr[7]);
             } 
            // dallasTemp->requestTemperatures();//)(this->addr);
         }
@@ -67,36 +73,33 @@ class DallasWaterTempSensor : public SensorBase {
             return NAN;
         }
         DeferredReading startRead() {
-
-            // onewire->reset_search();
-            // DeviceAddress addr;
-            // onewire->begin(ONEWIRE_PIN);
-            // dallasTemp->begin();
-            // delay(200);
-            // dbg.printf("Finding onewire sensors...\n");
-            // while (onewire->search(addr)) {
-            //     dbg.printf("Onewire device found, address: %0x, %0x, %0x, %0x, %0x, %0x, %0x, %0x\n",addr[0],addr[1],addr[2],addr[3],addr[4],addr[5],addr[6],addr[7]);
-            // }
-            // dbg.printf("Done finding onewire sensors\n");
+            onewire->reset_search();
+            onewire->begin(ONEWIRE_PIN);
+            dallasTemp->begin();
+            delay(200);
 
             DeferredReading reading;
             reading.isComplete = false;
             reading.isSuccessful = false;
             reading.values[0] = NAN;
             reading.readingCount = 1;
-            reading.deferUntil = millis() + 700;
+            reading.deferUntil = millis() + dallasTemp->millisToWaitForConversion(ACCURACY_BITS) - 50;
             if (!this->isOk) {
                 this->init();
             }
             if (!this->isOk) {
-                dbg.printf("Tried to read Dallas sensor at address %x %x %x %x %x %x %x %x but it is not connected!\n", this->addr[0], this->addr[1], this->addr[2], this->addr[3], this->addr[4], this->addr[5], this->addr[6], this->addr[7]);
+                dbg.eprintf("Tried to read Dallas sensor at address %x %x %x %x %x %x %x %x but it is not connected!\n", this->addr[0], this->addr[1], this->addr[2], this->addr[3], this->addr[4], this->addr[5], this->addr[6], this->addr[7]);
                 reading.isComplete = true;
                 reading.isSuccessful = false;
                 reading.deferUntil = 0;
                 this->isOk = false;
             } else  {
-                dallasTemp->requestTemperatures();
-                // if (!dallasTemp->requestTemperaturesByAddress(this->addr)) {
+                if (!dallasTemp->requestTemperaturesByAddress(this->addr)) {
+                    dbg.wprintln("Dallas temp failed to request individual device");
+                    dallasTemp->requestTemperatures();
+                }
+                
+               // dallasTemp->requestTemperaturesByAddress(this->addr);
                     
                 //     //dallasTemp->requestTemperatures();
                 //     dbg.println("failed to request water temp sensor one time");
@@ -117,11 +120,29 @@ class DallasWaterTempSensor : public SensorBase {
         }
         void finishRead(DeferredReading &reading) {
             reading.isComplete = true;
+            unsigned long startWait = millis();
+            while (!dallasTemp->isConversionComplete() && millis() - startWait < 700) {
+                dbg.dprintf("dallas temp sensor not ready to be read yet!\n");
+                delay(1);
+            }
+            if (!dallasTemp->isConversionComplete()) {
+                dbg.eprintln("Dallas temp sensor wasn't ready after all that!");
+            }
             float val = dallasTemp->getTempC(this->addr);
             if (val <= -127) {
+                errCount++;
                 reading.isSuccessful = false;
                 reading.values[0] = NAN;
-                dbg.printf("Dallas sensor at address %x %x %x %x %x %x %x %x failed to read temperature, returned %f\n", this->addr[0], this->addr[1], this->addr[2], this->addr[3], this->addr[4], this->addr[5], this->addr[6], this->addr[7], val);
+                dbg.eprintf("Dallas sensor at address %x %x %x %x %x %x %x %x failed to read temperature, returned %f\n", this->addr[0], this->addr[1], this->addr[2], this->addr[3], this->addr[4], this->addr[5], this->addr[6], this->addr[7], val);
+                if (errCount > 10) {
+                    dbg.eprintln("Dallas sensors failed more than 10 times, resetting bus");
+                    digitalWrite(ONEWIRE_PIN, LOW);
+                    delay(10);
+                    digitalWrite(ONEWIRE_PIN, HIGH);
+                    onewire->begin(ONEWIRE_PIN);
+                    dallasTemp->begin();
+                    errCount = 0;
+                }
             } else {
                 reading.isSuccessful = true;
                 reading.values[0] = val;

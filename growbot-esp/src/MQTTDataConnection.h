@@ -1,7 +1,7 @@
 #include <Ticker.h>
 #include <AsyncMqttClient.h>
 #include <WiFi.h>
-#include "DebugUtils.h"
+#include <GrowbotCommon.h>
 #include "GrowbotData.h"
 #include "DataConnection.h"
 #include <mdns.h>
@@ -20,54 +20,34 @@ class MQTTDataConnection : public DataConnection {
         void reconnectTimerTick() {
             reconnectTimerSet = false;
             if (!WiFi.isConnected()) {
-                dbg.printf("MQTT: Wifi isn't connected, will try rescheduling reconnect again.\n");
+                dbg.wprintf("MQTT: Wifi isn't connected, will try rescheduling reconnect again.\n");
                 startReconnectTimer();
             } else {
-                dbg.printf("MQTT: Wifi is connected, doing mqtt connect.\n");
+                dbg.dprintf("MQTT: Wifi is connected, doing mqtt connect.\n");
                 connectMqtt();
             }            
         }
 
         void connectMqtt() {
-            dbg.println("connectMqtt..");
+            dbg.dprintln("connectMqtt..");
             if (mqttClient.connected()) {
-                dbg.println("connectMqtt called but MQTT is already conected.");
+                dbg.dprintln("connectMqtt called but MQTT is already conected.");
                 return;
             }
             if (!WiFi.isConnected()) {
-                dbg.println("MQTT not in a state to connect, probably Wifi is not ready.");
+                dbg.wprintln("MQTT not in a state to connect, probably Wifi is not ready.");
             } else {
-                dbg.printf("MQTT: mDNS resolving %s.local\n", mqttHost);
-                bool mdnsResolved = false;
-                struct ip4_addr addr;
-                addr.addr = 0;
-                esp_err_t err = mdns_query_a(mqttHost, 2000,  &addr);
-                if(err){
-                    if(err == ESP_ERR_NOT_FOUND){
-                        dbg.printf("mDNS Host %s was not found!\n", mqttHost);
-                        mdnsResolved = false;
-                    }
-                    dbg.printf("mDNS Query Failed\n");
-                    mdnsResolved = false;
+                IPAddress ip;
+                if (!Resolver.resolve(mqttHost, &ip)) {
+                    dbg.eprintf("MQTT: unable to resolve hostname %s!  Will try to pass it through\n", mqttHost);
+                    this->mqttClient.setServer(mqttHost, this->mqttPort);
                 } else {
-                    mdnsResolved = true;
-                    dbg.printf("mDNS Resolved %s to %d.%d.%d.%d\n", mqttHost, IP2STR(&addr));
-                }
-                
-                if (mdnsResolved) {
-                    dbg.printf("MQTT connecting to resovled mDNS IP %d.%d.%d.%d port %d\n", IP2STR(&addr), this->mqttPort);
-                    IPAddress mdnsAddress = IPAddress(addr.addr);
-                    this->mqttClient.setServer(mdnsAddress, this->mqttPort);
-                } else {
-                    dbg.printf("MQTT connecting with hostname %s port %d\n", this->mqttHost, this->mqttPort);
-                    this->mqttClient.setServer(this->mqttHost, this->mqttPort);
-                }
-
-
-                
-                dbg.printf("Connecting MQTT to %s:%d...\n", this->mqttHost, this->mqttPort);
+                    dbg.dprintf("MQTT connecting to resovled mDNS IP %s on port %d\n", ip.toString(), this->mqttPort);
+                    this->mqttClient.setServer(ip, this->mqttPort);
+                }                 
+                dbg.dprintf("Connecting MQTT to %s:%d...\n", this->mqttHost, this->mqttPort);
                 this->mqttClient.connect();
-            
+
             }
         }
         void onWifiConnect(WiFiEvent_t event, WiFiEventInfo_t info) {

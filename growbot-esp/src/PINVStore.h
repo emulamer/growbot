@@ -1,5 +1,5 @@
 #include "NVStore.h"
-#include "DebugUtils.h"
+#include <DebugUtils.h>
 #include "hardware/sync.h"
 //#include "mbed.h"
 #include <FlashIAP.h>
@@ -73,16 +73,16 @@ class PINVStore : public NVStore {
             blockDevice->read(&curVersion, 0, 1);
 
             if (curVersion != CONFIG_VERSION) {
-                dbg.printf("PINVStore: Read config version of %d doesn't match current version of %d, using defaults\n", curVersion, CONFIG_VERSION);
+                dbg.wprintf("PINVStore: Read config version of %d doesn't match current version of %d, using defaults\n", curVersion, CONFIG_VERSION);
                 readDefaultConfig(config);
                 return;
             }
-            dbg.printf("PINVStore: reading config from flash...\n");
+            dbg.dprintf("PINVStore: reading config from flash...\n");
             blockDevice->read((uint8_t*)config, 1, sizeof(GrowbotConfig));
-            dbg.printf("PINVStore: config read\n");
+            dbg.dprintf("PINVStore: config read\n");
         }
         void writeConfig(GrowbotConfig* config) {
-            dbg.printf("PINVStore: Writing config to flash\n");
+            dbg.dprintf("PINVStore: Writing config to flash\n");
             
             const auto messageSize = sizeof(GrowbotConfig) + 1;
             const unsigned int requiredEraseBlocks = ceil(messageSize / (float)  eraseBlockSize);
@@ -95,7 +95,7 @@ class PINVStore : public NVStore {
             blockDevice->erase(0, requiredEraseBlocks * eraseBlockSize);
             blockDevice->program(buffer, 0, dataSize);
             free(buffer);
-            dbg.printf("PINVStore: Finished writing config to flash\n");
+            dbg.dprintf("PINVStore: Finished writing config to flash\n");
         }
 };
 
