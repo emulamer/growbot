@@ -42,7 +42,7 @@ class MQTTDataConnection : public DataConnection {
                     dbg.eprintf("MQTT: unable to resolve hostname %s!  Will try to pass it through\n", mqttHost);
                     this->mqttClient.setServer(mqttHost, this->mqttPort);
                 } else {
-                    dbg.dprintf("MQTT connecting to resovled mDNS IP %s on port %d\n", ip.toString(), this->mqttPort);
+                    dbg.dprintf("MQTT connecting to resovled mDNS IP %s on port %d\n", ip.toString().c_str(), this->mqttPort);
                     this->mqttClient.setServer(ip, this->mqttPort);
                 }                 
                 dbg.dprintf("Connecting MQTT to %s:%d...\n", this->mqttHost, this->mqttPort);

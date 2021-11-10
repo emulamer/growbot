@@ -21,7 +21,7 @@
 
 
 WaterLevel waterLevel(35, 34, 500);
-FlowMeter inFlowMeter(5, 1000);
+FlowMeter inFlowMeter(5, 875);
 FlowMeter outFlowMeter(21, 586); 
 
 SolenoidValve inValve(33, 300, 15);//both valve pulse time and hold values are probably wrong
@@ -126,11 +126,11 @@ void broadcastStatus() {
   String jsonStr;
   
   if (serializeJson(doc, jsonStr) == 0) {
-    dbg.println("Failed to serialize reply json");
+    dbg.eprintln("Failed to serialize reply json");
     return;
   }
   webSocket.broadcastTXT(jsonStr);
-  dbg.println("broadcast status");
+  dbg.dprintln("broadcast status");
 }
 
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length) { 

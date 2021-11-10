@@ -392,7 +392,7 @@ void setupIO() {
 }
 
 void setup() {  
-  dbg.setLogLevel(LOG_LEVEL_WARN);
+  dbg.setLogLevel(LOG_LEVEL_DEBUG);
   Serial.begin(115200);
   nvStore.init();
   dbg.println("Growbot v.01 starting up...");

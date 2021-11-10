@@ -34,7 +34,7 @@ class WSWaterLevel : public SensorBase
                 return false;
             }
             if (newip != resolvedIP) {
-                dbg.dprintf("WSWaterLevel: resolved ip has change from %s to %s\n", resolvedIP.toString(), newip.toString());
+                dbg.dprintf("WSWaterLevel: resolved ip has change from %s to %s\n", resolvedIP.toString().c_str(), newip.toString().c_str());
                 resolvedIP = newip;
             }
             webSocket.begin(resolvedIP, port, "/");
@@ -99,10 +99,7 @@ class WSWaterLevel : public SensorBase
             if (!isInitted) {
                 if (!connectWebsocket()) {
                     return false;
-                }
-                webSocket.onEvent(std::bind(&WSWaterLevel::webSocketEvent, this, _1, _2, _3));
-                webSocket.setReconnectInterval(5000);
-                
+                }                
                 isInitted = true;
             }
             return isConnected;
@@ -111,6 +108,8 @@ class WSWaterLevel : public SensorBase
         WSWaterLevel(const char* websocketHostname, int websocketPort) {
             this->hostname = websocketHostname;
             this->port = websocketPort;
+            webSocket.onEvent(std::bind(&WSWaterLevel::webSocketEvent, this, _1, _2, _3));
+            webSocket.setReconnectInterval(5000);
         }       
 
         DeferredReading startRead() {
