@@ -1,5 +1,6 @@
 #define LOG_UDP_PORT 44447
-#include <GrowbotCommon.h>
+#define GB_NODE_TYPE "growbot-switcheroo"
+#include <EzEsp.h>
 #include <Arduino.h>
 #include <WiFi.h>
 #include <EEPROM.h>
@@ -8,14 +9,11 @@
 #include <ArduinoJson.h>
 #include <ESPRandom.h>
 
-//http server code from https://randomnerdtutorials.com/esp32-web-server-arduino-ide/
-
 const char* WIFI_SSID = "MaxNet";
 const char* WIFI_PASSWORD = "88888888";
 #define MDNS_NAME "growbot-switcheroo"
 #define WEBSOCKET_PORT 8118
 
-//WiFiServer server(80);
 WebSocketsServer webSocket(WEBSOCKET_PORT); 
 unsigned long currentTime = millis();
 unsigned long previousTime = 0; 
@@ -208,7 +206,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length)
 
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   EEPROM.begin(512);
 
   for (int i = 0; i < NUM_PORTS; i++) {
@@ -218,7 +216,7 @@ void setup() {
 
   loadState();
   setPorts();
-  growbotCommonSetup(MDNS_NAME, WIFI_SSID, WIFI_PASSWORD);
+  ezEspSetup(MDNS_NAME, WIFI_SSID, WIFI_PASSWORD);
   
   dbg.println("Starting websocket...");
   webSocket.begin();
@@ -241,7 +239,7 @@ void broadcastState() {
 }
 unsigned long lastTick = 0;
 void loop() {
-  growbotCommonLoop();
+  ezEspLoop();
   webSocket.loop();
   if (millis() - lastTick > 10000) {
     broadcastState();

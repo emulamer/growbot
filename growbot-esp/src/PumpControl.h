@@ -26,7 +26,7 @@ class PumpControl {
 
         void handle() {
             bool emShutoff = false;
-            if (this->growbotData->controlBucket.waterLevelPercent < MIN_WATER_LEVEL_PERCENT) {
+            if (this->growbotData->controlBucket.waterLevelPercent <= MIN_WATER_LEVEL_PERCENT) {
                 emShutoff = true;
             }
            //TODO: integration with water leak detectors somehow

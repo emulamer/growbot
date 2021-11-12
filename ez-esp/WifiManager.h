@@ -1,9 +1,14 @@
 #include <Arduino.h>
-#include <WiFi.h>
 #include <ArduinoOTA.h>
 #include "DebugUtils.h"
-#ifndef WIFIMANAGER_H
-#define WIFIMANAGER_H
+#ifdef ARDUINO_ARCH_ESP8266
+#include <ESP8266WiFi.h>
+#elif defined(ARDUINO_ARCH_ESP32)
+#include <WiFi.h>
+#endif
+
+
+#pragma once
 
 #define WIFI_STRENGTH_REPORT_FREQ_MS 5000
 class WifiManager {
@@ -11,6 +16,11 @@ class WifiManager {
         const char* ssid;
         const char* password;
         const char* hostname;
+#ifdef ARDUINO_ARCH_ESP8266
+        WiFiEventHandler onconnect;
+        WiFiEventHandler ondisconnect;
+        WiFiEventHandler onip;
+#endif
         unsigned long lastReportStamp = 0;
         IPAddress emptyip = IPAddress(0,0,0,0);
         unsigned long nextReconnectStamp = 0;
@@ -23,25 +33,42 @@ class WifiManager {
             }
         }
 
+#ifdef ARDUINO_ARCH_ESP8266
+        void onWifiConnect(WiFiEventStationModeConnected event) {        
+#elif defined(ARDUINO_ARCH_ESP32)
         void onWifiConnect(WiFiEvent_t event, WiFiEventInfo_t info) {
+#endif
             dbg.println("Wifi connected, waiting for IP...");
         }
-        void onWifiGotIP(WiFiEvent_t event) {
-            dbg.printf("Wifi got IP %s\n",WiFi.localIP().toString().c_str());
-            dbg.wifiIsReady();
-            dbg.println("Set wifi ready for debug");
-        }
 
+#ifdef ARDUINO_ARCH_ESP8266
+        void onWifiGotIP(WiFiEventStationModeGotIP event) {
+#elif defined(ARDUINO_ARCH_ESP32)
+        void onWifiGotIP(WiFiEvent_t event) {
+#endif
+            dbg.wifiIsReady();
+            dbg.printf("Wifi got IP %s\n",WiFi.localIP().toString().c_str());
+        }
+#ifdef ARDUINO_ARCH_ESP8266
+        void onWifiDisconnect(WiFiEventStationModeDisconnected disconnect) {
+#elif defined(ARDUINO_ARCH_ESP32)
         void onWifiDisconnect(WiFiEvent_t event) {
+#endif
             dbg.println("Wifi disconnected");
             nextReconnectStamp = millis() + 6000;
         }
 
     public: 
         WifiManager() {
+#ifdef ARDUINO_ARCH_ESP8266
+            onconnect = WiFi.onStationModeConnected(std::bind(&WifiManager::onWifiConnect, this, std::placeholders::_1));
+            onip = WiFi.onStationModeGotIP(std::bind(&WifiManager::onWifiGotIP, this, std::placeholders::_1));
+            ondisconnect = WiFi.onStationModeDisconnected(std::bind(&WifiManager::onWifiDisconnect, this, std::placeholders::_1));
+#elif defined(ARDUINO_ARCH_ESP32)
             WiFi.onEvent(std::bind(&WifiManager::onWifiGotIP, this, std::placeholders::_1), SYSTEM_EVENT_STA_GOT_IP);  
             WiFi.onEvent(std::bind(&WifiManager::onWifiDisconnect, this, std::placeholders::_1), SYSTEM_EVENT_STA_DISCONNECTED);
             WiFi.onEvent(std::bind(&WifiManager::onWifiConnect, this, std::placeholders::_1, std::placeholders::_2), SYSTEM_EVENT_STA_CONNECTED);
+#endif
         }
         void init(const char* hostname, const char* defaultSSID, const char* defaultPassword) {
             this->ssid = defaultSSID;
@@ -65,4 +92,3 @@ class WifiManager {
             }
         }
 };
-#endif

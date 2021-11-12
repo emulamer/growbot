@@ -2,8 +2,14 @@
 #include <stdarg.h>
 #include <Print.h>
 #include <stdarg.h>
-#include <WiFiUdp.h>
+#ifdef ARDUINO_ARCH_ESP8266
+#include <ESP8266WiFi.h>
+#include <WiFiUDP.h>
+#elif defined(ARDUINO_ARCH_ESP32) 
 #include <Wifi.h>
+#include <WiFiUdp.h>
+#endif
+
 
 #pragma once
 
@@ -20,7 +26,7 @@ class SerialPrint : public Print {
         SerialPrint() : Print() 
         { }
         virtual ~SerialPrint() {}
-
+        void wifiIsReady() {}
         void setLogLevel(byte level) {
           logLevel = level;
         }

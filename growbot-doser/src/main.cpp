@@ -1,5 +1,6 @@
 #define LOG_UDP_PORT 44445
-#include <GrowbotCommon.h>
+#define GB_NODE_TYPE "growbot-doser"
+#include <EzEsp.h>
 #include <Wifi.h>
 #include <ArduinoOTA.h>
 #include <ESPmDNS.h>
@@ -324,8 +325,8 @@ void setup() {
   pinMode(LATCH_PIN, OUTPUT);
   pinMode(DATA_PIN, OUTPUT);
   allOff();
-  Serial.begin(9600);
-  growbotCommonSetup(MDNS_NAME, WIFI_SSID, WIFI_PASSWORD, []() {
+  Serial.begin(115200);
+  ezEspSetup(MDNS_NAME, WIFI_SSID, WIFI_PASSWORD, []() {
     dbg.println("Update starting, stopping all dosing");
     stopAll();
   });
@@ -344,7 +345,7 @@ void setup() {
 
 void loop() {
   webSocket.loop();
-  growbotCommonLoop();
+  ezEspLoop();
   for (int i = 0; i < NUM_PORTS; i++) {
     if (!portTimers[i].running) {
       continue;

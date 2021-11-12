@@ -1,5 +1,6 @@
 #define LOG_UDP_PORT 44444
-#include <GrowbotCommon.h>
+#define GB_NODE_TYPE "growbot-esp"
+#include <EzEsp.h>
 #include <Arduino.h>
 #include <ArduinoOTA.h>
 #include <Wire.h>
@@ -24,7 +25,6 @@
 #include "TimeKeeper.h" 
 #include "soc/rtc_wdt.h"
 #include <driver/periph_ctrl.h>
-#include "../growbot-common/WifiManager.h"
 #include "MQTTDataConnection.h"
 #include "EEPROMNVStore.h"
 #include "PumpControl.h"
@@ -32,8 +32,6 @@
 #include <Ticker.h>
 MQTTDataConnection dataConn(MQTT_HOST, MQTT_PORT, MQTT_TOPIC, MQTT_CONFIG_TOPIC);
 EEPROMNVStore nvStore;
-
-#define WATCHDOG_REBOOT_SEC 45
 
 #define EC_CALIBRATION_LOW 12880
 #define EC_CALIBRATION_HIGH 80000
@@ -85,7 +83,7 @@ void doImportantTicks();
 Sensorama sensorama = Sensorama(i2cBus, i2cBus2, &i2cMultiplexer, &data, &config, doImportantTicks);
 void doImportantTicks() {
   bool doSendState = false;
-  growbotCommonLoop();
+  ezEspLoop();
   doSendState = doSendState || lightsTimekeeper->handle();
   doSendState = doSendState || roomFansTimekeeper->handle();
   powerCtl.handle();
@@ -388,7 +386,7 @@ void setupIO() {
       }
     );
     switcheroo->init();
-    growbotCommonSetup(MDNS_NAME, WIFI_SSID, WIFI_PASSWORD);
+    ezEspSetup(MDNS_NAME, WIFI_SSID, WIFI_PASSWORD);
 }
 
 void setup() {  
@@ -416,7 +414,7 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH);
   delay(2000);
-  growbotCommonLoop();
+  ezEspLoop();
   sensorama.update();
   delay(1000);
 }

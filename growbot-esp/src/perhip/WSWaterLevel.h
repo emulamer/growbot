@@ -6,7 +6,8 @@
 #include <WiFi.h>
 #include <ArduinoJson.h>
 #include <ESPRandom.h>
-#include <GrowbotCommon.h>
+#include <EzEsp.h>
+#include <MessageParser.h>
 
 #pragma once
 using namespace std::placeholders;
@@ -26,7 +27,7 @@ class WSWaterLevel : public SensorBase
 
         float lastStatusLevel = NAN;
         unsigned long lastStatusStamp = 0;
-        StaticJsonDocument<512> readDoc;
+        //StaticJsonDocument<512> readDoc;
         bool connectWebsocket() {
             IPAddress newip;
             if (!Resolver.resolve(hostname, &newip)) {
@@ -52,41 +53,24 @@ class WSWaterLevel : public SensorBase
                     dbg.println("WSWaterLevel: websocket connected");
                     break;
                 case WStype_TEXT:
-                    auto err = deserializeJson(readDoc, payload, length);
-                    if (err) {
-                        dbg.wprintf("WSWaterLevel: Failed to deserialize ws msg: %s\n", err.c_str());
+                    GbMsg* msg = parseGbMsg((char*)payload, length);
+                    if (msg == NULL) {
+                        dbg.wprintln("WSWaterLevel: unparseable message!");
                         return;
                     }
-                    String event = readDoc["event"].as<String>();
-                    if (event == NULL || event.length() < 1) {
-                        dbg.wprintf("WSWaterLevel: message event was null or empty!");
-                        return;
+                    if (msg->myType().equals(NAMEOF(FlowStatusGbMsg))) {
+                        FlowStatusGbMsg* m = (FlowStatusGbMsg*)msg;
+                        float lvl = m->waterLevel();
+                        if (!isnan(lvl)) {
+                            lastStatusLevel = lvl;
+                            lastStatusStamp = millis();
+                        } else {
+                            dbg.println("WSWaterLevel: got nan water level!");
+                        }
+                    } else {
+                        dbg.dprintf("WsWaterLevel: some other msg type we don't care: %s\n", msg->myType().c_str());
                     }
-                    if (event.equals("status")) {
-                        if (!readDoc.containsKey("waterLevel")) {
-                            dbg.wprintln("WSWaterLevel: got a status update but it didn't have a water level");
-                            return;
-                        }
-                        lastStatusLevel = readDoc["waterLevel"].as<float>();
-                        lastStatusStamp = millis();
-                    } else if (event.equals("cmdresult")) {
-                        if (!readDoc["success"].as<bool>()) {
-                            dbg.eprintf("WSWaterLevel: success was false or missing");
-                            if (readDoc.containsKey("error")) {
-                            dbg.eprintf(" error: %s\n", readDoc["error"].as<String>().c_str());
-                            } else {
-                                dbg.println("no error in response");
-                            }
-                            return;
-                        }
-                        if (!readDoc.containsKey("waterLevel")) {
-                            dbg.wprintf("WSWaterLevel: response was missing waterLevel\n");
-                            return;
-                        }
-                        replyWaterLevel = readDoc["waterLevel"].as<float>();
-                        dbg.dprintf("WSWaterLevel: got response of %f\n", replyWaterLevel);
-                    }
-                    readDoc.clear();
+                    delete msg;
                     break;
             }
 
@@ -133,20 +117,8 @@ class WSWaterLevel : public SensorBase
                 reading.values[0] = NAN;
                 return reading;
             }
-            StaticJsonDocument<256> doc;
-            uint8_t uuid_array[16];
-            ESPRandom::uuid4(uuid_array);
-            doc["msgid"] = ESPRandom::uuidToString(uuid_array);
-            doc["cmd"] = "get";
-            doc["field"] = "waterLevel";
-            String jsonStr;
-  
-            if (serializeJson(doc, jsonStr) == 0) {
-                reading.isComplete = true;
-                reading.isSuccessful = false;
-                reading.values[0] = NAN;
-                return reading;
-            }
+            GbGetStatusMsg msg(WiFi.macAddress());
+            String jsonStr = msg.toJson();  
             webSocket.sendTXT(jsonStr);
             reading.deferUntil = millis() + 750; //should be able to get a response within 750ms I hope?
             return reading;

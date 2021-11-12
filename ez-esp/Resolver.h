@@ -1,7 +1,14 @@
 #include <Arduino.h>
 #include "DebugUtils.h"
+#ifdef ARDUINO_ARCH_ESP8266
+#include <ESP8266mDNS.h>
+#include <ESP8266Ping.h>
+#include <mDNSResolver.h>
+#include <WiFiUDP.h>
+#elif defined(ARDUINO_ARCH_ESP32)
 #include <ESPmDNS.h>
 #include <ESP32Ping.h>
+#endif
 #include <regex>
 #include "lwip/dns.h"
 
@@ -20,8 +27,14 @@ struct ResolveRef {
     bool isMDNS = false;
 };
 
+#ifdef ARDUINO_ARCH_ESP8266
+    WiFiUDP _udp_8266;
+    mDNSResolver::Resolver _resolver_8266(_udp_8266);
+#endif
+
 class IpResolver {
 private:
+
     std::vector<ResolveRef*> resolved;
     bool ping(IPAddress ip) {
         for (int i = 0; i < 3; i++) {
@@ -95,9 +108,14 @@ public:
                // dbg.dprintf("Resolver: resolved hostname %s to ip %s via DNS ...\n", ref->hostname, resolvedIp.toString().c_str());
                 ref->isMDNS = false;
             } else {
+#ifdef ARDUINO_ARCH_ESP8266
+                resolvedIp = _resolver_8266.search(ref->hostname);
+                if(resolvedIp == INADDR_NONE) {
+#elif defined(ARDUINO_ARCH_ESP32)
                // dbg.dprintf("Resolver: DNS failed, trying to resolving hostname %s via mDNS...\n", ref->hostname);
                 resolvedIp = MDNS.queryHost(ref->hostname);
                 if (resolvedIp.toString() == "0.0.0.0") {
+#endif
                     dbg.wprintf("Resolver: MDNS failed to resolve hostname %s!\n", ref->hostname);
                     return false;
                 }

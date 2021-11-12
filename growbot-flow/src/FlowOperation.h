@@ -3,30 +3,58 @@
 #include "WaterLevel.h"
 
 #pragma once
-enum FlowOpType { FillToPercentOnce, FillToPercent, DrainToPercent, Empty, Flush, FlushAndFillToPercent, Wait };
+struct FlowOpType {
+     static const String FillToPercentOnce;
+     static const String FillToPercent;
+     static const String DrainToPercent;
+     static const String Empty;
+     static const String Flush;
+     static const String FlushAndFillToPercent;
+     static const String Wait;
+};
+const String FlowOpType::FillToPercentOnce = "FillToPercentOnce";
+const String FlowOpType::FillToPercent = "FillToPercentOnce";
+const String FlowOpType::DrainToPercent = "FillToPercentOnce";
+const String FlowOpType::Empty = "FillToPercentOnce";
+const String FlowOpType::Flush = "FillToPercentOnce";
+const String FlowOpType::FlushAndFillToPercent = "FillToPercentOnce";
+const String FlowOpType::Wait  = "FillToPercentOnce";
 class FlowOp {
+    protected:
+        String errorMessage;
+        bool done = false;
+        bool aborted = false;
+        bool failed = false;
     public:
         FlowOp() {}
         virtual ~FlowOp() {};
-        virtual FlowOpType getType() = 0;
+        virtual String getType() = 0;
         virtual void handle() = 0;
         virtual void start() = 0;
         virtual void abort() = 0;
-        virtual bool isDone() = 0;
-        virtual bool isFailed() = 0;
+        bool isDone() {
+            return done || aborted || failed;
+        }
+        bool isFailed() {
+            return failed || aborted;
+        }
+        bool isAborted() {
+            return aborted;
+        }
         float opOutFlow = NAN;
         float opInFlow = NAN;
         float opTotalDeltaFlow = NAN;
+        String getError() {
+            return errorMessage;
+        }
 };
 
 class WaitOp : public FlowOp {
     private:
         unsigned long startedAt = 0;
         int milliseconds;
-        bool aborted = false;
-        bool done = false;
     public:
-        FlowOpType getType() { return FlowOpType::Wait; }
+        String getType() { return FlowOpType::Wait; }
         WaitOp(int milliseconds) {
             this->milliseconds = milliseconds;
         }
@@ -43,20 +71,13 @@ class WaitOp : public FlowOp {
                 startedAt = 0;
             }
         }
-
-        bool isDone() {
-            return done || aborted;
-        }
-        bool isFailed() {
-            return aborted;
-        }
         void abort() {
             aborted = true;
         }
 };
 
 
-#define FILL_CHECK_MS 45000
+#define FILL_CHECK_MS 60000
 class FillToPercentOp : public FlowOp {
     private:
         float targetPercent;
@@ -68,14 +89,12 @@ class FillToPercentOp : public FlowOp {
 
         unsigned long lastCheck = 0;
         float lastCheckPercent = 0;
-        bool done = false;
-        bool aborted = false;
-        bool failed = false;
+
         FlowMeter* inFlow;
         FlowMeter* outFlow;
     public:
 
-        FlowOpType getType() { return FlowOpType::FillToPercentOnce; }
+        String getType() { return FlowOpType::FillToPercentOnce; }
         FillToPercentOp(WaterLevel* waterLevel, SolenoidValve* inValve, FlowMeter* inFlow, FlowMeter* outFlow, float targetPercent) {
             this->targetPercent = targetPercent;
             this->inValve = inValve;
@@ -125,8 +144,9 @@ class FillToPercentOp : public FlowOp {
             }
             if (millis() > lastCheck && (millis() - lastCheck) > FILL_CHECK_MS) {
                 dbg.printf("Filling, %f of target %f\n", levelNow, targetPercent);
-                if ((levelNow - lastCheckPercent) < 0.1) {
+                if ((levelNow - lastCheckPercent) < 0.05) {
                     dbg.printf("FAIL: water level %f hasn't gone up even a little since last check of %f!\n", levelNow, lastCheckPercent);
+                    errorMessage = "Water level hasn't gone up even a little!";
                     inValve->setOn(false);
                     failed = true;
                     opInFlow = inFlow->getLitersSinceReset() - inStartingLiters;
@@ -150,13 +170,10 @@ class FillToPercentOp : public FlowOp {
             aborted = true;
             failed = true;
         }
-        bool isDone() {
-            return done || aborted || failed;
-        }
 };
 
 
-#define DRAIN_CHECK_MS 45000
+#define DRAIN_CHECK_MS 60000
 class DrainToPercentOp : public FlowOp {
     private:
         float targetPercent;
@@ -167,13 +184,10 @@ class DrainToPercentOp : public FlowOp {
         float outStartingLiters = 0;
         unsigned long lastCheck = 0;
         float lastCheckPercent = 0;
-        bool done = false;
-        bool aborted = false;
-        bool failed = false;
         FlowMeter* inFlow;
         FlowMeter* outFlow;
     public:
-        FlowOpType getType() { return FlowOpType::DrainToPercent; }
+        String getType() { return FlowOpType::DrainToPercent; }
         DrainToPercentOp(WaterLevel* waterLevel, SolenoidValve* outValve, FlowMeter* inFlow, FlowMeter* outFlow, float targetPercent) {
             this->targetPercent = targetPercent;
             this->outValve = outValve;
@@ -202,9 +216,6 @@ class DrainToPercentOp : public FlowOp {
                 outValve->setOn(true);
             }
         }
-        bool isFailed() {
-            return failed || aborted;
-        }
         void handle() {
             if (failed || aborted || done) {
                 return;
@@ -224,8 +235,9 @@ class DrainToPercentOp : public FlowOp {
             }
             if (millis() > lastCheck && (millis() - lastCheck) > DRAIN_CHECK_MS) {
                 dbg.printf("Draining, %f of target %f\n", levelNow, targetPercent);
-                if ((lastCheckPercent - levelNow) < 0.1) {
+                if ((lastCheckPercent - levelNow) < 0.05) {
                     dbg.printf("FAIL: water level %f hasn't gone down even a little last check of %f!\n", levelNow, lastCheckPercent);
+                    errorMessage = "Water level hasn't gone down even a little!";
                     outValve->setOn(false);
                     failed = true;
                     return;
@@ -246,9 +258,6 @@ class DrainToPercentOp : public FlowOp {
             opOutFlow = outFlow->getLitersSinceReset() - outStartingLiters;
             opTotalDeltaFlow = opInFlow - opOutFlow;
         }
-        bool isDone() {
-            return done || aborted || failed;
-        }
 };
 
 
@@ -258,9 +267,6 @@ class MetaFlowOp : public FlowOp {
         std::vector<FlowOp*> opSteps;
         int currentIndex = -1;
         FlowOp* currentOp = NULL;
-        bool aborted = false;
-        bool failed = false;
-        bool done = false;
         bool started = false;
         FlowMeter* inFlow;
         FlowMeter* outFlow;
@@ -272,32 +278,12 @@ class MetaFlowOp : public FlowOp {
             this->outFlow = outFlow;
         }
         virtual ~MetaFlowOp() {
-            dbg.println("Destructing MetaFlowOp");
             while (opSteps.size() > 0) {
                 FlowOp* op = opSteps.back();
                 op->abort();
                 delete op;
                 opSteps.pop_back();
             }
-        }
-        virtual bool isDone() {
-            return done || failed || aborted;
-            // for (auto step : this->opSteps) {
-            //     if (!step->isDone()) {
-            //         return false;
-            //     }
-            // }
-            // return true;
-        }
-
-        virtual bool isFailed() {
-            return failed || aborted;
-            // for (auto step : this->opSteps) {
-            //     if (step->isFailed()) {
-            //         return true;
-            //     }
-            // }
-            // return false;
         }
 
         virtual void abort() {
@@ -335,6 +321,7 @@ class MetaFlowOp : public FlowOp {
             if (currentOp->isDone()) {
                 if (currentOp->isFailed()) {
                     dbg.println("meta op has a failed op");
+                    errorMessage = "Sub operation " + currentOp->getType() + " failed: " + currentOp->getError();
                     failed = true;
                 } else if (currentIndex == this->opSteps.size() - 1) {
                     dbg.println("finished the last step in the meta op");
@@ -354,7 +341,7 @@ class EmptyOp : public MetaFlowOp {
     private:
         SolenoidValve* outValve;
     public:
-        virtual FlowOpType getType() { return FlowOpType::Empty; }
+        virtual String getType() { return FlowOpType::Empty; }
         EmptyOp(WaterLevel* waterLevel, SolenoidValve* outValve, FlowMeter* inFlow, FlowMeter* outFlow)
             : MetaFlowOp(inFlow, outFlow) {
                 this->outValve = outValve;
@@ -387,7 +374,7 @@ class FlushOp : public MetaFlowOp {
     protected:
         using MetaFlowOp::opSteps;
     public:
-        virtual FlowOpType getType() { return FlowOpType::Flush; }
+        virtual String getType() { return FlowOpType::Flush; }
         FlushOp(WaterLevel* waterLevel, SolenoidValve* inValve, SolenoidValve* outValve, FlowMeter* inFlow, FlowMeter* outFlow, int flushes = 1, float rinseFillPercent = 20.0, int rinseSec = 300) 
             : MetaFlowOp(inFlow, outFlow) {
                 this->inValve = inValve;
@@ -413,7 +400,7 @@ class FlushOp : public MetaFlowOp {
 
 class FlushAndFillToPercentOp : public FlushOp {
       public:
-        virtual FlowOpType getType() { return FlowOpType::FlushAndFillToPercent; }
+        virtual String getType() { return FlowOpType::FlushAndFillToPercent; }
         FlushAndFillToPercentOp(WaterLevel* waterLevel, SolenoidValve* inValve, SolenoidValve* outValve, FlowMeter* inFlow, FlowMeter* outFlow, float fillToPercent, int flushes = 1, float rinseFillPercent = 20.0, int rinseSec = 300)
             : FlushOp(waterLevel, inValve, outValve, inFlow, outFlow, flushes, rinseFillPercent, rinseSec)
         {
@@ -427,7 +414,7 @@ class FillToPercentEnsured : public MetaFlowOp {
     private:
         SolenoidValve* inValve;
     public:
-    virtual FlowOpType getType() {return FlowOpType::FillToPercent;}
+    virtual String getType() {return FlowOpType::FillToPercent;}
     FillToPercentEnsured(WaterLevel* waterLevel, SolenoidValve* inValve, FlowMeter* inFlow, FlowMeter* outFlow, float percent) 
         : MetaFlowOp(inFlow, outFlow) {
             this->inValve = inValve;

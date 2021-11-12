@@ -1,7 +1,7 @@
 #include <Ticker.h>
 #include <AsyncMqttClient.h>
 #include <WiFi.h>
-#include <GrowbotCommon.h>
+#include <EzEsp.h>
 #include "GrowbotData.h"
 #include "DataConnection.h"
 #include <mdns.h>
