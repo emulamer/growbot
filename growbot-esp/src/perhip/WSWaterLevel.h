@@ -58,8 +58,8 @@ class WSWaterLevel : public SensorBase
                         dbg.wprintln("WSWaterLevel: unparseable message!");
                         return;
                     }
-                    if (msg->myType().equals(NAMEOF(FlowStatusGbMsg))) {
-                        FlowStatusGbMsg* m = (FlowStatusGbMsg*)msg;
+                    if (msg->myType().equals(NAMEOF(FlowStatusMsg))) {
+                        FlowStatusMsg* m = (FlowStatusMsg*)msg;
                         float lvl = m->waterLevel();
                         if (!isnan(lvl)) {
                             lastStatusLevel = lvl;

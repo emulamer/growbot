@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include "WSMessenger.h"
+#include <GbMsg.h>
 
 #pragma once
 

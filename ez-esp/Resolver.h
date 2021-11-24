@@ -9,7 +9,6 @@
 #include <ESPmDNS.h>
 #include <ESP32Ping.h>
 #endif
-#include <regex>
 #include "lwip/dns.h"
 
 #pragma once
@@ -44,7 +43,6 @@ private:
         }
         return false;
     }
-    const std::regex ipRegex = std::regex("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$");
 public:
     bool resolve(String hostname, IPAddress* resolvedToIp) {
         ResolveRef* ref = NULL;
@@ -65,20 +63,55 @@ public:
             ref->hostname = (const char*)malloc(len);
             memcpy((void*)ref->hostname, hostcstr, len);
             this->resolved.push_back(ref);
-            if (std::regex_match(hostname.c_str(), ipRegex)) {
-             //   dbg.dprintf("%s appears to be a raw ip address in there\n", hostname.c_str());
-                unsigned int parts[4];
-                int got = sscanf(hostname.c_str(), "%u.%u.%u.%u", &parts[0], &parts[1], &parts[2], &parts[3]);
-                IPAddress ip;
-                if (got != 4 || parts[0] > 255 || parts[1] > 255 || parts[2] > 255 || parts[3] > 255) {
-             //       dbg.dprintf("Only got %d expected 4, or one of them is over 255\n", got);
+            const char* ipStr = hostname.c_str();
+            IPAddress ipSegs;
+            len--;
+            int segIdx = 0;
+            bool parseFail = false;
+            int numStartIdx = -1;
+            for (int i = 0; i < len; i++) {
+                if (ipStr[i] >= '0' && ipStr[i] <= '9') {
+                    if (numStartIdx < 0) {
+                        numStartIdx = i;
+                    }
+                } else if (ipStr[i] == '.') {
+                    if (numStartIdx < 1) {
+                        parseFail = true;
+                        break;
+                    } else {
+                        int ctr = 0;
+                        ipSegs[segIdx] = 0;
+                        for (int j = i; j >= numStartIdx; j--) {
+                            ipSegs[segIdx] += pow(10, ctr) * (ipStr[j] - '0');
+                        }
+                        numStartIdx = -1;
+                        segIdx++;
+                        if (segIdx > 3) {
+                            parseFail = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (!parseFail && numStartIdx >= 0 && segIdx == 2) {
+                int ctr = 0;
+                ipSegs[segIdx] = 0;
+                for (int j = len-1; j >= numStartIdx; j--) {
+                    ipSegs[segIdx] += pow(10, ctr) * (ipStr[j] - '0');
+                }
+            } else {
+                parseFail = true;
+            }
+
+            if (!parseFail && segIdx != 3) {
+                parseFail = true;
+            }
+            if (!parseFail) {
+                   if (ipSegs[0] > 255 || ipSegs[1] > 255 || ipSegs[2] > 255 || ipSegs[3] > 255) {
+                //      dbg.dprintf("one of them is over 255\n");
                 } else {
-                    ip[0] = parts[0];
-                    ip[1] = parts[1];
-                    ip[2] = parts[2];
-                    ip[3] = parts[3];
-               //     dbg.dprintf("%s seemed to parse out ok to %s\n", hostname.c_str(), ip.toString());
-                    ref->ip = ip;
+                  //   dbg.dprintf("%s seemed to parse out ok to %s\n", hostname.c_str(), ipSegs.toString());
+                    ref->ip = ipSegs;
                     ref->isResolved = true;
                     ref->resolvedStamp = millis();
                 }            
@@ -109,7 +142,10 @@ public:
                 ref->isMDNS = false;
             } else {
 #ifdef ARDUINO_ARCH_ESP8266
-                resolvedIp = _resolver_8266.search(ref->hostname);
+                String resoName = String(ref->hostname);
+                resoName = resoName + ".local";
+
+                resolvedIp = _resolver_8266.search(resoName.c_str());
                 if(resolvedIp == INADDR_NONE) {
 #elif defined(ARDUINO_ARCH_ESP32)
                // dbg.dprintf("Resolver: DNS failed, trying to resolving hostname %s via mDNS...\n", ref->hostname);

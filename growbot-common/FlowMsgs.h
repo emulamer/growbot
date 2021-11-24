@@ -5,6 +5,8 @@
 struct FlowInfo {
     float litersIn = NAN;
     float litersOut = NAN;
+    bool inValveOpen = false;
+    bool outValveOpen = false;
     float waterLevel = NAN;
     void* currentOperation = NULL;
 };
@@ -29,7 +31,7 @@ class FlowStartOpMsg : public GbMsg {
     public:
         String myType() { return NAMEOF(FlowStartOpMsg); }
         FlowStartOpMsg(StaticJsonDocument<MSG_JSON_SIZE> ref) : GbMsg(ref) { }
-        FlowStartOpMsg(String nodeId, String opName, const std::initializer_list<float> &params) : GbMsg(NAMEOF(FlowStatusGbMsg), nodeId) {
+        FlowStartOpMsg(String nodeId, String opName, const std::initializer_list<float> &params) : GbMsg(NAMEOF(FlowStatusMsg), nodeId) {
             (*this)["op"] = opName;
             for (auto p: params) {
                 (*this)["params"].add(p);
@@ -41,11 +43,9 @@ class FlowStartOpMsg : public GbMsg {
             return (*this)["op"].as<String>();
         }
         int paramCount() {
-            dbg.printf("getting size\n");
             return (*this)["params"].as<JsonArray>().size();
         }
         float param(int index) {
-            dbg.printf("getting param %i\n", index);
             return (*this)["params"][index].as<float>();
         }
 
@@ -61,12 +61,20 @@ class FlowAbortOpMsg : public GbMsg {
 };
 
 
-class FlowStatusGbMsg : public GbMsg {
+class FlowStatusMsg : public GbMsg {
+    private:
+        //in growbot-flow's main.cpp
+        void setupMsg(FlowInfo& status);
     public:
-        virtual String myType() { return NAMEOF(FlowStatusGbMsg); }
-        FlowStatusGbMsg(StaticJsonDocument<MSG_JSON_SIZE> ref) : GbMsg(ref) {}
-        FlowStatusGbMsg(String nodeId, FlowInfo& status);
-        virtual ~FlowStatusGbMsg() {}
+        virtual String myType() { return NAMEOF(FlowStatusMsg); }
+        FlowStatusMsg(StaticJsonDocument<MSG_JSON_SIZE> ref) : GbMsg(ref) {}
+        FlowStatusMsg(String nodeId, FlowInfo& status) : GbMsg(NAMEOF(FlowStatusMsg), nodeId) {
+            setupMsg(status);
+        }
+        FlowStatusMsg(String msgType, String nodeId, FlowInfo& status) : GbMsg(msgType, nodeId) {
+            setupMsg(status);
+        }
+        virtual ~FlowStatusMsg() {}
         float litersIn() {
             if (!(*this)["status"].containsKey("litersIn")) {
                 return NAN;
@@ -84,6 +92,12 @@ class FlowStatusGbMsg : public GbMsg {
                 return NAN;
             }
             return (*this)["status"]["waterLevel"].as<float>();
+        }
+        bool inValveOpen() {
+            return (*this)["status"]["inValveOpen"].as<bool>();
+        }
+        bool outValveOpen() {
+            return (*this)["status"]["outValveOpen"].as<bool>();
         }
         String currentOp() {
             if ((*this)["status"]["currentOp"].isNull()) {
@@ -114,21 +128,36 @@ class FlowStatusGbMsg : public GbMsg {
                 return NAN;
             }
             return (*this)["status"]["currentOp"]["litersDelta"].as<float>();
-        }    
+        }
+        int currentOpParamCount() {
+            return (*this)["params"].as<JsonArray>().size();
+        }
+        float currentOpParam(int index) {
+            return (*this)["params"][index].as<float>();
+        }
+        String currentOpErrorMessage() {
+            return (*this)["status"]["currentOp"]["errorMessage"].as<String>();
+        }
+        String currentOpId() {
+            return (*this)["status"]["currentOp"]["id"].as<String>();
+        }
 };
 
-class FlowOpStartedMsg : public FlowStatusGbMsg {
+class FlowOpStartedMsg : public FlowStatusMsg {
     public:
         virtual String myType() { return NAMEOF(FlowOpStartedMsg); }
-        FlowOpStartedMsg(StaticJsonDocument<MSG_JSON_SIZE> ref) : FlowStatusGbMsg(ref) {}
-        FlowOpStartedMsg(String nodeId, FlowInfo& status) : FlowStatusGbMsg(NAMEOF(FlowOpStartedMsg), status) {}
+        FlowOpStartedMsg(StaticJsonDocument<MSG_JSON_SIZE> ref) : FlowStatusMsg(ref) { }
+        FlowOpStartedMsg(String nodeId, FlowInfo& status) : FlowStatusMsg(NAMEOF(FlowOpStartedMsg), nodeId, status) {
+        }
         ~FlowOpStartedMsg() {}
 };
 
-class FlowOpEndedMsg : public FlowStatusGbMsg {
+class FlowOpEndedMsg : public FlowStatusMsg {
     public:
         virtual String myType() { return NAMEOF(FlowOpEndedMsg); }
-        FlowOpEndedMsg(StaticJsonDocument<MSG_JSON_SIZE> ref) : FlowStatusGbMsg(ref) {}
-        FlowOpEndedMsg(String nodeId, FlowInfo& status) : FlowStatusGbMsg(NAMEOF(FlowOpStartedMsg), status) {}
+        FlowOpEndedMsg(StaticJsonDocument<MSG_JSON_SIZE> ref) : FlowStatusMsg(ref) { }
+        FlowOpEndedMsg(String nodeId, FlowInfo& status) : FlowStatusMsg(NAMEOF(FlowOpEndedMsg), nodeId, status) {
+        }
         ~FlowOpEndedMsg() {}
+       
 };

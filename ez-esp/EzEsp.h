@@ -101,6 +101,8 @@ void ezEspLoop() {
     ArduinoOTA.handle();
     WifiMgr.handle();
 #ifdef ARDUINO_ARCH_ESP8266
-    MDNS.update();
+    if (WiFi.isConnected()) {
+        MDNS.update();
+    }
 #endif
 }

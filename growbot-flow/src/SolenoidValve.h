@@ -1,9 +1,10 @@
 #include <Arduino.h>
 #include "DebugUtils.h"
+#include "FlowValve.h"
 
 #pragma once
 
-class SolenoidValve {
+class SolenoidValve : public FlowValve {
     private:
         byte pin;
         int openPulseMS;
@@ -23,7 +24,6 @@ class SolenoidValve {
             ledcAttachPin(pin, ledcChannel);
             instanceCounter++;
         }
-
         void update() {
             if (turnedOn && switchToHoldStamp > 0 && millis() >= switchToHoldStamp) {
                 //  dbg.printf("switching port %d to 25pct pwm\n", i);
@@ -33,17 +33,17 @@ class SolenoidValve {
             } 
         }
 
-        bool isOn() {
+        bool isOpen() {
             return turnedOn;
         }
 
         //returns true if the state changed
-        bool setOn(bool on) {
+        bool setOpen(bool open) {
             
-            if (on == turnedOn) {
+            if (open == turnedOn) {
                 return false;
             }
-            turnedOn = on;
+            turnedOn = open;
             if (!turnedOn) {
                 ledcWrite(ledcChannel, 0);
                 dbg.printf("pin %d using ledc channel %d set to zero\n", pin, ledcChannel);

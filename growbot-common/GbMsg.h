@@ -1,9 +1,8 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
-#include <ESPRandom.h>
 
 #pragma once
-#define MSG_JSON_SIZE 512
+#define MSG_JSON_SIZE 1024
 
 #define NAMEOF(name) #name
 
@@ -13,9 +12,7 @@ class GbMsg : public StaticJsonDocument<MSG_JSON_SIZE> {
         }
 
         GbMsg(String msgType, String nodeId) : StaticJsonDocument<MSG_JSON_SIZE>() {
-            uint8_t uuid_array[16];
-            ESPRandom::uuid4(uuid_array);
-            (*this)["msgId"] = ESPRandom::uuidToString(uuid_array);
+            (*this)["msgId"] = String(random(100000000)) + "-" + String(random(100000000)) + "-" + String(random(100000000));
             (*this)["msgType"] = msgType;
             (*this)["nodeType"] = GB_NODE_TYPE;
             (*this)["nodeId"] = nodeId;

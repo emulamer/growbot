@@ -26,6 +26,9 @@ class WifiManager {
         unsigned long nextReconnectStamp = 0;
         void connectWifi() {
             if (!WiFi.isConnected() || WiFi.localIP() == emptyip) {
+#ifdef ARDUINO_ARCH_ESP8266
+                WiFi.setPhyMode(WIFI_PHY_MODE_11G);
+#endif
                 WiFi.mode(WIFI_STA);
                 WiFi.begin(this->ssid, this->password);
             } else {

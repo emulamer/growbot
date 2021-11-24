@@ -34,6 +34,10 @@ class SerialPrint : public Print {
         {
             return Serial.write((const char*)buffer, size);
         }
+        size_t write(uint8_t i)
+        {
+            return Serial.write(i);
+        }
         template<typename... Args> void printf(const char * format, Args... args) {
           if (logLevel < LOG_LEVEL_INFO) {
             return;
@@ -129,7 +133,11 @@ class UdpPrint : public Print {
                 udp.write(buffer, size);
                 udp.endPacket();
             }
+#ifndef NO_SERIAL
             return Serial.write((const char*)buffer, size);
+#else
+            return size;
+#endif
         }
         size_t write(uint8_t) {
             return 1;

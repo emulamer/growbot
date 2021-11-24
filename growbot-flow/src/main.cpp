@@ -8,7 +8,10 @@
 #include "FlowMeter.h"
 #include <ESP32AnalogRead.h>
 #include "WaterLevel.h"
+#include "FlowValve.h"
 #include "SolenoidValve.h"
+#include "ComplexValve.h"
+#include "ToggleValve.h"
 #include <ArduinoJson.h>
 #include <ESPRandom.h>
 #include "FlowOperation.h"
@@ -20,18 +23,24 @@
 #define MDNS_NAME "growbot-flow"
 #define WEBSOCKET_PORT 8118
 
-
+#define LOOP_ON_PIN 25
+#define LOOP_OFF_PIN 26
 
 WaterLevel waterLevel(35, 34, 500);
-FlowMeter inFlowMeter(5, 875);
-FlowMeter outFlowMeter(21, 586); 
+FlowMeter inFlowMeter(5, 1380);//1136);
+FlowMeter outFlowMeter(21, 460); 
 
-SolenoidValve inValve(33, 300, 15);//both valve pulse time and hold values are probably wrong
-SolenoidValve outValve(27, 300, 15);
-// SolenoidValve valve3(26, 500, 20);
-// SolenoidValve valve4(14, 500, 20);
-// SolenoidValve valve5(32, 500, 20);
-// SolenoidValve valve6(25, 500, 20);
+ToggleValve* loopValve = new ToggleValve(25, 26);
+FlowValve* drainValve = new SolenoidValve(27, 300, 15);
+
+FlowValve* inValve = new SolenoidValve(33, 300, 15);
+FlowValve* outValve = new ComplexValve(drainValve, loopValve, true);
+// FlowValve valve26(26, 5000, 255);
+// FlowValve valve14(14, 5000, 255);
+// FlowValve valve32(32, 5000, 255);
+// FlowValve valve25(25, 5000, 255);
+// FlowValve valve5(32, 500, 20);
+// FlowValve valve6(25, 500, 20);
 
 
 //connector side:  33 32  14??? something wrong, 32 always triggers
@@ -43,8 +52,8 @@ struct FlowParts {
   WaterLevel* waterLevel;
   FlowMeter* inFlowMeter;
   FlowMeter* outFlowMeter;
-  SolenoidValve* inValve;
-  SolenoidValve* outValve;
+  FlowValve* inValve;
+  FlowValve* outValve;
 };
 
 FlowParts flowParts;
@@ -92,8 +101,10 @@ void broadcastStatus() {
   info.litersIn = inFlowMeter.getLitersSinceReset();
   info.litersOut = outFlowMeter.getLitersSinceReset();
   info.waterLevel = waterLevel.getWaterLevel();
+  info.inValveOpen = inValve->isOpen();
+  info.outValveOpen = outValve->isOpen();
   info.currentOperation = currentFlowOp;
-  FlowStatusGbMsg status(WiFi.macAddress(), info);
+  FlowStatusMsg status(WiFi.macAddress(), info);
   String jsonStr = status.toJson();
   webSocket.broadcastTXT(jsonStr);
   dbg.dprintln("broadcast status");
@@ -105,6 +116,7 @@ void startOp(FlowOp* newOp) {
   }
   currentFlowOp = newOp;
   currentFlowOp->start();
+  broadcastOpStart();
 }
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length) {   
   if (type == WStype_CONNECTED) {
@@ -117,6 +129,10 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length)
   }
   if (type != WStype_TEXT) {
     dbg.println("got a non-text websocket message, ignoring it");
+    return;
+  }
+  if (length < 2) {
+    dbg.dprintln("too short ws text message, ignoring");
     return;
   }
   if (length > 500) {
@@ -157,28 +173,28 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length)
             dbg.printf("didn't get enough parameters for DrainToPercent op\n");
             res.setUnsuccess("DrainToPercent requires the percent to drain to");
           } else {
-            startOp(new DrainToPercentOp(&waterLevel, &outValve, &inFlowMeter, &outFlowMeter, smsg->param(0)));
+            startOp(new DrainToPercentEnsured(&waterLevel, outValve, &inFlowMeter, &outFlowMeter, smsg->param(0)));
             res.setSuccess();
           }
         } else if (op.equals(FlowOpType::Empty)) {
-
+          startOp(new EmptyOp(&waterLevel, outValve, &inFlowMeter, &outFlowMeter));
         } else if (op.equals(FlowOpType::FillToPercent)) {
           if (paramCtr < 1) {
             dbg.printf("didn't get enough parameters for FillToPercent op\n");
             res.setUnsuccess("FillToPercent requires the percent to drain to");
           } else {
-            startOp(new FillToPercentOp(&waterLevel, &inValve, &inFlowMeter, &outFlowMeter, smsg->param(0)));
+            startOp(new FillToPercentEnsured(&waterLevel, inValve, &inFlowMeter, &outFlowMeter, smsg->param(0)));
             res.setSuccess();
           }
         } else if (op.equals(FlowOpType::Flush)) {
-            startOp(new FlushOp(&waterLevel, &inValve, &outValve, &inFlowMeter, &outFlowMeter, paramCtr>0?smsg->param(0):1,paramCtr>1?smsg->param(1):15, paramCtr>2?smsg->param(2):300));
+            startOp(new FlushOp(&waterLevel, inValve, outValve, &inFlowMeter, &outFlowMeter, paramCtr>0?smsg->param(0):1,paramCtr>1?smsg->param(1):15, paramCtr>2?smsg->param(2):300));
             res.setSuccess();
         } else if (op.equals(FlowOpType::FlushAndFillToPercent)) {
           if (paramCtr < 1) {
             dbg.printf("didn't get enough parameters for FlushAndFillToPercent op\n");
             res.setUnsuccess("FlushAndFillToPercent requires at least the final fill percent, and optionally the number of rinses, the rinse fill percent, and the amount of seconds to rinse");
           } else {
-            startOp(new FlushAndFillToPercentOp(&waterLevel, &inValve, &outValve, &inFlowMeter, &outFlowMeter, smsg->param(0),paramCtr>1?smsg->param(1):1, paramCtr>2?smsg->param(2):15, paramCtr>3?(int)smsg->param(3):300));
+            startOp(new FlushAndFillToPercentOp(&waterLevel, inValve, outValve, &inFlowMeter, &outFlowMeter, smsg->param(0),paramCtr>1?smsg->param(1):1, paramCtr>2?smsg->param(2):15, paramCtr>3?(int)smsg->param(3):300));
             res.setSuccess();
           }
         } else {
@@ -193,14 +209,16 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length)
     String ctr = smsg->counterName();
     if (ctr == NULL) {
       dbg.printf("counterName must be provided\n");
-    } else if (ctr.equals("inLiters")) {
+    } else if (ctr.equals("litersIn")) {
       float val = smsg->fromAmount();
       inFlowMeter.resetFrom((val <=0 )?inFlowMeter.getLitersSinceReset():val);
       res.setSuccess();
-    } else if (ctr.equals("outLiters")) {
+      broadcastStatus();
+    } else if (ctr.equals("litersOut")) {
       float val = smsg->fromAmount();
       outFlowMeter.resetFrom((val <=0 )?outFlowMeter.getLitersSinceReset():val);
       res.setSuccess();
+      broadcastStatus();
     } else {
       dbg.printf("Got unknown reset counterName: %s\n", smsg->counterName().c_str());
       res.setUnsuccess("Unknown counterName");
@@ -211,6 +229,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length)
       res.setUnsuccess("There is no operation in progress");
     } else {
       currentFlowOp->abort();
+      broadcastOpComplete();
       res.setSuccess();
     }
   } else if (msgType.equals(NAMEOF(GbGetStatusMsg))) {
@@ -228,18 +247,27 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length)
 
 
 void setup() {
+  pinMode(LOOP_ON_PIN, OUTPUT);
+  pinMode(LOOP_OFF_PIN, OUTPUT);
+  digitalWrite(LOOP_ON_PIN, HIGH);
+  digitalWrite(LOOP_OFF_PIN, LOW);
   flowParts.inFlowMeter = &inFlowMeter;
   flowParts.outFlowMeter = &outFlowMeter;
-  flowParts.inValve = &inValve;
-  flowParts.outValve = &outValve;
+  flowParts.inValve = inValve;
+  flowParts.outValve = outValve;
   flowParts.waterLevel = &waterLevel;
   Serial.begin(115200);
-  inValve.setOn(false);
-  outValve.setOn(false);
+  inValve->setOpen(false);
+  outValve->setOpen(false);
   ezEspSetup(MDNS_NAME, WIFI_SSID, WIFI_PASSWORD, []() {
             dbg.println("Update starting, turning off valves");
-            inValve.setOn(false);
-            outValve.setOn(false);
+            inValve->setOpen(false);
+            outValve->setOpen(false);
+            if (currentFlowOp != NULL && !currentFlowOp->isDone()) {
+              dbg.println("Update starting, aborting operation");
+              currentFlowOp->abort();
+              broadcastOpComplete();
+            }            
         });  
   dbg.println("Starting websocket...");
   webSocket.begin();
@@ -250,13 +278,13 @@ unsigned long last = millis();
 void loop() {
   ezEspLoop();
   webSocket.loop();  
-  inValve.update();
-  outValve.update();
+  inValve->update();
+  outValve->update();
   waterLevel.update();
   //peace of mind, always shut the input valve off if water level is 100 or more
-  if (waterLevel.getWaterLevel() >= 100 && inValve.isOn()) {
+  if (waterLevel.getWaterLevel() >= 100 && inValve->isOpen()) {
     dbg.eprintln("Water level is at max but input valve is on!  Turning it off");
-    inValve.setOn(false);
+    inValve->setOpen(false);
   }
   if (currentFlowOp != NULL && !currentFlowOp->isDone()) {
     currentFlowOp->handle();
@@ -280,6 +308,9 @@ void loop() {
     dbg.printf("In ticks: %d\n", inFlowMeter.getPulseCount());
     dbg.printf("Out Flow: %f\n", outFlowMeter.getLitersSinceReset());
     dbg.printf("Out ticks: %d\n", outFlowMeter.getPulseCount());
+    dbg.printf("In valve open: %d\n", inValve->isOpen());
+    dbg.printf("Out valve open: %d\n", outValve->isOpen());
+    
     dbg.printf("wifi RSSI: %d\n", WiFi.RSSI());
     broadcastStatus();
     last = millis();
@@ -287,10 +318,12 @@ void loop() {
   
 }
 
-FlowStatusGbMsg::FlowStatusGbMsg(String nodeId, FlowInfo& status) : GbMsg(NAMEOF(FlowStatusGbMsg), nodeId) {
+void FlowStatusMsg::setupMsg(FlowInfo& status) {
             (*this)["status"]["litersIn"] = status.litersIn;
             (*this)["status"]["litersOut"] = status.litersOut;
             (*this)["status"]["waterLevel"] = status.waterLevel;
+            (*this)["status"]["inValveOpen"] = status.inValveOpen;
+            (*this)["status"]["outValveOpen"] = status.outValveOpen;
             if (status.currentOperation != NULL) {
                 (*this)["status"]["currentOp"]["type"] = ((FlowOp*)status.currentOperation)->getType();
                 (*this)["status"]["currentOp"]["status"] = ((FlowOp*)status.currentOperation)->isDone()?(((FlowOp*)status.currentOperation)->isAborted()?"aborted":(((FlowOp*)status.currentOperation)->isFailed()?"failed":"done")):"running";
@@ -298,5 +331,9 @@ FlowStatusGbMsg::FlowStatusGbMsg(String nodeId, FlowInfo& status) : GbMsg(NAMEOF
                 (*this)["status"]["currentOp"]["litersOut"] = ((FlowOp*)status.currentOperation)->opOutFlow;
                 (*this)["status"]["currentOp"]["litersDelta"] = ((FlowOp*)status.currentOperation)->opTotalDeltaFlow;
                 (*this)["status"]["currentOp"]["errorMessage"] = ((FlowOp*)status.currentOperation)->getError();
+                (*this)["status"]["currentOp"]["id"] = ((FlowOp*)status.currentOperation)->getId();
+                for (auto p: ((FlowOp*)status.currentOperation)->getParams()) {
+                  (*this)["status"]["currentOp"]["params"].add(p);
+                }
             }
         }

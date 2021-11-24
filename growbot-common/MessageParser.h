@@ -1,6 +1,9 @@
 #include <Arduino.h>
 #include "FlowMsgs.h"
 #include "SwitcherooMsgs.h"
+#include "TempSensorMsgs.h"
+#include "DucterMsgs.h"
+#include "HumidifierMsgs.h"
 #include "GbMsg.h"
 
 
@@ -18,9 +21,9 @@ GbMsg* parseGbMsg(char* payload, int length) {
   } else if (doc["msgType"].as<String>().equals(NAMEOF(SwitcherooSetPortsMsg))) {
     dbg.println("switcheroo set port message");
     return new SwitcherooSetPortsMsg(doc);
-  } else if (doc["msgType"].as<String>().equals(NAMEOF(FlowStatusGbMsg))) {
+  } else if (doc["msgType"].as<String>().equals(NAMEOF(FlowStatusMsg))) {
     dbg.println("Flow Status message");
-    return new FlowStatusGbMsg(doc);
+    return new FlowStatusMsg(doc);
   } else if (doc["msgType"].as<String>().equals(NAMEOF(FlowResetCounterMsg))) {
     dbg.println("Flow reset counter message");
     return new FlowResetCounterMsg(doc);
@@ -39,6 +42,24 @@ GbMsg* parseGbMsg(char* payload, int length) {
   } else if (doc["msgType"].as<String>().equals(NAMEOF(GbGetStatusMsg))) {
     dbg.println("get status message");
     return new GbGetStatusMsg(doc);
+  } else if (doc["msgType"].as<String>().equals(NAMEOF(GbResultMsg))) { 
+    dbg.println("result msg");
+    return new GbResultMsg(doc);
+  } else if (doc["msgType"].as<String>().equals(NAMEOF(DucterSetDuctsMsg))) { 
+    dbg.println("ducter set ducts msg");
+    return new DucterSetDuctsMsg(doc);
+  } else if (doc["msgType"].as<String>().equals(NAMEOF(DucterStatusMsg))) { 
+    dbg.println("ducter status msg");
+    return new DucterStatusMsg(doc);
+  } else if (doc["msgType"].as<String>().equals(NAMEOF(TempSensorStatusMsg))) { 
+    dbg.println("temp sensor status msg");
+    return new TempSensorStatusMsg(doc);
+  } else if (doc["msgType"].as<String>().equals(NAMEOF(HumidifierSetMsg))) { 
+    dbg.println("humidifier set msg");
+    return new HumidifierSetMsg(doc);
+  } else if (doc["msgType"].as<String>().equals(NAMEOF(HumidifierStatusMsg))) { 
+    dbg.println("humidifier status msg");
+    return new HumidifierStatusMsg(doc);
   } else {
     dbg.println("Unknown message");
       return NULL;
