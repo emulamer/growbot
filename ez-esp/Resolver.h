@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include "DebugUtils.h"
 #ifdef ARDUINO_ARCH_ESP8266
+#define MDNS_ATTEMPTS 3
 #include <ESP8266mDNS.h>
 #include <ESP8266Ping.h>
 #include <mDNSResolver.h>
@@ -142,10 +143,7 @@ public:
                 ref->isMDNS = false;
             } else {
 #ifdef ARDUINO_ARCH_ESP8266
-                String resoName = String(ref->hostname);
-                resoName = resoName + ".local";
-
-                resolvedIp = _resolver_8266.search(resoName.c_str());
+                resolvedIp = _resolver_8266.search(ref->hostname);
                 if(resolvedIp == INADDR_NONE) {
 #elif defined(ARDUINO_ARCH_ESP32)
                // dbg.dprintf("Resolver: DNS failed, trying to resolving hostname %s via mDNS...\n", ref->hostname);

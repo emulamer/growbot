@@ -51,13 +51,13 @@ class MessengerServer {
             if (length > 500) {
                 dbg.printf("got too big a websocket message, it was %d bytes\n", length);
             }
-            dbg.println("about to try parsing");
+            //dbg.println("about to try parsing");
             GbMsg* msg = parseGbMsg((char*)payload, length);
             if (msg == NULL) {
                 dbg.println("parsing failed, returned null");
                 return;
             } else {
-                dbg.printf("parsing success, type is %s\n", msg->myType().c_str());
+                //dbg.printf("parsing success, type is %s\n", msg->myType().c_str());
             }
             for (auto handler: handlers) {
                 if (handler->filter.equals(msg->myType())) {
@@ -65,6 +65,7 @@ class MessengerServer {
                     handler->handler(wrappedMsg);
                 }
             }
+            delete msg;
         }
     public:
         MessengerServer(String nodeid, int port) {

@@ -12,8 +12,8 @@
 #include <HumidifierMsgs.h>
 #include <EEPROM.h>
 
-#define HUMIDIFIER_PIN 1
-#define SOCKET_RECONNECT_PERIOD 10000
+#define HUMIDIFIER_PIN 3
+#define SOCKET_RECONNECT_PERIOD 30000
 unsigned long lastTick = 0;
 MessengerServer server(WiFi.macAddress(), 8118);
 WebSocketsClient webSocket;
@@ -110,16 +110,16 @@ void setMsg(MessageWrapper& mw) {
   HumidifierSetMsg* msg = (HumidifierSetMsg*)mw.message;
   GbResultMsg repl(WiFi.macAddress());
   int mode = msg->mode();
-  String sensorName = msg->targetSensorName();
-  float onPct = msg->onHumidityPercent();
-  float offPct = msg->offHumidityPercent();
+  String sensorName = msg->sensor();
+  float onPct = msg->onPct();
+  float offPct = msg->offPct();
     if (sensorName == NULL) {
-      dbg.println("sensor name is null");
+     // dbg.println("sensor name is null");
     }
     if (targetSensorName == NULL) {
-      dbg.println("target sensor name is null");
+   //   dbg.println("target sensor name is null");
     }
-  dbg.printf("got set msg, mode: %d, on humidity: %f, off humidity %f, sensorName: %s\n", mode, onPct, offPct, sensorName.c_str());
+ //dbg.printf("got set msg, mode: %d, on humidity: %f, off humidity %f, sensorName: %s\n", mode, onPct, offPct, sensorName.c_str());
   bool isOk = true;
   if (mode == HUMIDIFIER_MODE_AUTO) {
     if (isnan(onPct)) {
@@ -131,19 +131,22 @@ void setMsg(MessageWrapper& mw) {
     } else if ((sensorName == NULL || sensorName.length() < 1 || sensorName.equals("null")) && (targetSensorName == NULL || targetSensorName.length() < 1 || targetSensorName.equals("null"))) {
       repl.setUnsuccess("targetSensorName is not set and must be provided for auto mode");
       isOk = false;
-    } else {
-      onHumidityPercent = onPct;
-      offHumidityPercent = offPct;
     }
-  }
+  } 
+  
   
   if (isOk) {
     currentMode = mode;
-  
+    if (!isnan(onPct)) {
+      onHumidityPercent = onPct;
+    } 
+    if (!isnan(offPct)) {
+      offHumidityPercent = offPct;
+    }
     if (!(sensorName.length() < 1 || sensorName.equals("null"))) {
       //sensor name change, reconfigure stuff
       targetSensorName = sensorName;
-      checkSocketClient();
+      //checkSocketClient();
       currentHumidityPercent = NAN;
     }
     EEPROM.put(0, currentMode);
@@ -156,21 +159,25 @@ void setMsg(MessageWrapper& mw) {
       EEPROM.write(36 + i, str[i]);
     }
     EEPROM.commit();
-    if (setHumidifier()) {
-      broadcastStatus();
-    }
+    //if (setHumidifier()) {
+     // broadcastStatus();
+   // }
     repl.setSuccess();
   }  
-  dbg.printf("gonna do reply\n");
+  //dbg.printf("gonna do reply\n");
   mw.reply(repl);
 }
 
 void setup() {
-  Serial.setDebugOutput(true);
-  Serial.begin(115200);
+  //Serial.setDebugOutput(true);
+  //Serial.begin(115200);
   EEPROM.begin(512);
-  //GPIO 3 (RX) swap the pin to a GPIO.
+  pinMode(0, OUTPUT);
+  pinMode(2, OUTPUT);
+  digitalWrite(0, HIGH);
+  digitalWrite(2, HIGH);
   pinMode(HUMIDIFIER_PIN, FUNCTION_3); 
+  pinMode(HUMIDIFIER_PIN, OUTPUT);  
   ezEspSetup(MDNS_NAME, "MaxNet", "88888888");
   EEPROM.get(0, currentMode);
   EEPROM.get(4, onHumidityPercent);  
@@ -204,11 +211,12 @@ void loop() {
   ezEspLoop();
   server.handle();
   webSocket.loop();
-  if (!webSocket.isConnected()) {
-    checkSocketClient();
-  }
+
   setHumidifier();
-  if (millis() - lastTick > 5000) {    
+  if (millis() - lastTick > 5000) {  
+      if (!webSocket.isConnected()) {
+      checkSocketClient();
+    }  
     dbg.printf("device %s, free heap: %d\n", MDNS_NAME, ESP.getFreeHeap());
     dbg.printf("isOn: %d, target sensor: %s, currentHumidityPercent: %f, mode: %d, on at: %f, off at: %f, sensor connected: %d\n", isOn, targetSensorName.c_str(), currentHumidityPercent, currentMode, onHumidityPercent, offHumidityPercent, webSocket.isConnected());
     

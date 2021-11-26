@@ -132,6 +132,7 @@ class UdpPrint : public Print {
                 udp.beginPacket(bcast, LOG_UDP_PORT);
                 udp.write(buffer, size);
                 udp.endPacket();
+                udp.flush();
             }
 #ifndef NO_SERIAL
             return Serial.write((const char*)buffer, size);

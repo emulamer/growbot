@@ -12,10 +12,11 @@ class GbMsg : public StaticJsonDocument<MSG_JSON_SIZE> {
         }
 
         GbMsg(String msgType, String nodeId) : StaticJsonDocument<MSG_JSON_SIZE>() {
-            (*this)["msgId"] = String(random(100000000)) + "-" + String(random(100000000)) + "-" + String(random(100000000));
+            (*this)["msgId"] = String(random(10000000));
             (*this)["msgType"] = msgType;
             (*this)["nodeType"] = GB_NODE_TYPE;
-            (*this)["nodeId"] = nodeId;
+            nodeId.replace(":","");
+            (*this)["nodeId"] = MDNS_NAME;
         }
         virtual ~GbMsg() {};
         String msgId() {

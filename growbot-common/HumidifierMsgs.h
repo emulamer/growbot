@@ -10,36 +10,36 @@ class HumidifierSetMsg : public GbMsg {
     public:
         virtual String myType() {return NAMEOF(HumidifierSetMsg);}
         HumidifierSetMsg(StaticJsonDocument<MSG_JSON_SIZE> ref) : GbMsg(ref) {};
-        HumidifierSetMsg(String nodeId, int mode, float onHumidityPercent, float offHumidityPercent, String targetSensorName) : GbMsg(__FUNCTION__, nodeId) { 
+        HumidifierSetMsg(String nodeId, int mode, float onPct, float offPct, String sensor) : GbMsg(__FUNCTION__, nodeId) { 
             (*this)["mode"] = mode;
-            (*this)["onHumidityPercent"] = onHumidityPercent;
-            (*this)["offHumidityPercent"] = offHumidityPercent;
-            (*this)["targetSensorName"] = targetSensorName;
+            (*this)["onPct"] = onPct;
+            (*this)["offPct"] = offPct;
+            (*this)["sensor"] = sensor;
         }
-        HumidifierSetMsg(String msgType, String nodeId, int mode, float onHumidityPercent, float offHumidityPercent, String targetSensorName) : GbMsg(msgType, nodeId) { 
+        HumidifierSetMsg(String msgType, String nodeId, int mode, float onPct, float offPct, String sensor) : GbMsg(msgType, nodeId) { 
             (*this)["mode"] = mode;
-            (*this)["onHumidityPercent"] = onHumidityPercent;
-            (*this)["offHumidityPercent"] = offHumidityPercent;
-            (*this)["targetSensorName"] = targetSensorName;
+            (*this)["onPct"] = onPct;
+            (*this)["offPct"] = offPct;
+            (*this)["sensor"] = sensor;
         }
 
         int mode() {
             return (*this)["mode"].as<int>();
         }
-        float onHumidityPercent() {
-            if ((*this)["onHumidityPercent"].isNull()) {
+        float onPct() {
+            if ((*this)["onPct"].isNull()) {
                 return NAN;
             }
-            return (*this)["onHumidityPercent"].as<float>();
+            return (*this)["onPct"].as<float>();
         }
-        float offHumidityPercent() {
-            if ((*this)["offHumidityPercent"].isNull()) {
+        float offPct() {
+            if ((*this)["offPct"].isNull()) {
                 return NAN;
             }
-            return (*this)["offHumidityPercent"].as<float>();
+            return (*this)["offPct"].as<float>();
         }
-        String targetSensorName() {
-            return (*this)["targetSensorName"].as<String>();
+        String sensor() {
+            return (*this)["sensor"].as<String>();
         }
         virtual ~HumidifierSetMsg() {}
 };
@@ -47,18 +47,18 @@ class HumidifierStatusMsg : public HumidifierSetMsg {
     public:
         virtual String myType() {return NAMEOF(HumidifierStatusMsg);}
         HumidifierStatusMsg(StaticJsonDocument<MSG_JSON_SIZE> ref) : HumidifierSetMsg(ref) {};
-        HumidifierStatusMsg(String nodeId, int mode, float onHumidityPercent, float offHumidityPercent, String targetSensorName, bool isOn, float currentHumidityPercent) : HumidifierSetMsg(__FUNCTION__, nodeId, mode, onHumidityPercent, offHumidityPercent, targetSensorName) { 
-            (*this)["currentHumidityPercent"] = currentHumidityPercent;
+        HumidifierStatusMsg(String nodeId, int mode, float onPct, float offPct, String sensor, bool isOn, float humPct) : HumidifierSetMsg(__FUNCTION__, nodeId, mode, onPct, offPct, sensor) { 
+            (*this)["humPct"] = humPct;
             (*this)["isOn"] = isOn;
         }
         bool isOn() {
             return (*this)["isOn"].as<bool>();
         }
-        float currentHumidityPercent() {
-            if ((*this)["currentHumidityPercent"].isNull()) {
+        float humPct() {
+            if ((*this)["humPct"].isNull()) {
                 return NAN;
             }
-            return (*this)["currentHumidityPercent"].as<float>();
+            return (*this)["humPct"].as<float>();
         }
         virtual ~HumidifierStatusMsg() {}
 };
