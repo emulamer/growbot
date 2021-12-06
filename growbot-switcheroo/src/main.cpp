@@ -1,23 +1,24 @@
 #define LOG_UDP_PORT 44447
+#define MDNS_NAME "growbot-switcheroo"
 #define GB_NODE_TYPE "growbot-switcheroo"
+#define GB_NODE_ID MDNS_NAME
 #include <EzEsp.h>
 #include <Arduino.h>
 #include <WiFi.h>
 #include <EEPROM.h>
 #include <ArduinoOTA.h>
-#include <WebSocketsServer.h>
 #include <ArduinoJson.h>
 #include <ESPRandom.h>
+#include <WSMessenger.h>
 
 const char* WIFI_SSID = "MaxNet";
 const char* WIFI_PASSWORD = "88888888";
-#define MDNS_NAME "growbot-switcheroo"
-#define WEBSOCKET_PORT 8118
 
-WebSocketsServer webSocket(WEBSOCKET_PORT); 
+UdpMessengerServer server(45678);
 unsigned long currentTime = millis();
 unsigned long previousTime = 0; 
 const long timeoutTime = 2000;
+bool doBroadcast = false;
 
 #define NUM_PORTS 6
 String header;
@@ -73,135 +74,34 @@ void loadState() {
   setPorts();
 }
 
-void makeStatus(StaticJsonDocument<512> &doc) {
-  //yeah, should be dynamic base on NUM_PORTS so sue me
-  doc["ports"]["port0"] = portStatus[0];
-  doc["ports"]["port1"] = portStatus[1];
-  doc["ports"]["port2"] = portStatus[2];
-  doc["ports"]["port3"] = portStatus[3];
-  doc["ports"]["port4"] = portStatus[4];
-  doc["ports"]["port5"] = portStatus[5];
-}
+void onSetPorts(MessageWrapper& mw) { 
+  GbResultMsg resp;
+  dbg.println("Got set ports msg");
 
-void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length) { 
-  
-  if (type == WStype_CONNECTED) {
-    dbg.println("got a websocket connection");
-    return;
-  }
-  if (type == WStype_DISCONNECTED) {
-    dbg.println("a websocket disconnected");
-    return;
-  }
-  if (type != WStype_TEXT) {
-    dbg.println("got a non-text websocket message, ignoring it");
-    return;
-  }
-  if (length > 500) {
-    dbg.printf("got too big a websocket message, it was %d bytes\n", length);
-  }
-  StaticJsonDocument<512> doc;
-  auto err = deserializeJson(doc, payload, length);
-  if (err) {
-    dbg.printf("Error deserializing websocket message: %s, data is %s\n", err.c_str(), (char*) payload);
-    return;
-  }
-  const char* cmd = doc["cmd"];
-  const char* msgid = doc["msgid"];
-
-  uint8_t uuid_array[16];
-  ESPRandom::uuid4(uuid_array);
-  doc["msgid"] = ESPRandom::uuidToString(uuid_array);
-  if (msgid != NULL) {
-    doc["replyto"] = msgid;
-  }
-  doc["event"] = "cmdresult";
-  bool doBroadcast = false;
-  if (strcmp(cmd, "get") == 0) {
-    makeStatus(doc);
-  } else if (strcmp(cmd, "setports") == 0) {
-    if (!doc.containsKey("ports")) {
-      doc["success"] = false;
-      doc["error"] = "ports must be specified";
-    } else {
-      bool hasOne = false;
-      bool hasChanges = false;
-      //should be dynamic on NUM_PORTS
-      if (doc["ports"].containsKey("port0")) {
-        hasOne = true;
-        bool on = doc["ports"]["port0"].as<bool>();
-        if (on != portStatus[0]) {
-          portStatus[0] = on;
-          hasChanges = true;
-        }
-      }
-      if (doc["ports"].containsKey("port1")) {
-        hasOne = true;
-        bool on = doc["ports"]["port1"].as<bool>();
-        if (on != portStatus[1]) {
-          portStatus[1] = on;
-          hasChanges = true;
-        }
-      }
-      if (doc["ports"].containsKey("port2")) {
-        hasOne = true;
-        bool on = doc["ports"]["port2"].as<bool>();
-        if (on != portStatus[2]) {
-          portStatus[2] = on;
-          hasChanges = true;
-        }
-      }
-      if (doc["ports"].containsKey("port3")) {
-        hasOne = true;
-        bool on = doc["ports"]["port3"].as<bool>();
-        if (on != portStatus[3]) {
-          portStatus[3] = on;
-          hasChanges = true;
-        }
-      }
-      if (doc["ports"].containsKey("port4")) {
-        hasOne = true;
-        bool on = doc["ports"]["port4"].as<bool>();
-        if (on != portStatus[4]) {
-          portStatus[4] = on;
-          hasChanges = true;
-        }
-      }
-      if (doc["ports"].containsKey("port5")) {
-        hasOne = true;
-        bool on = doc["ports"]["port5"].as<bool>();
-        if (on != portStatus[5]) {
-          portStatus[5] = on;
-          hasChanges = true;
-        }
-      } 
-      if (!hasOne) {
-        doc["success"] = false;
-        doc["error"] = "no port values were specified";
-      } else {
-        if (hasChanges) {
-          dbg.println("Websocket command to update ports, there were changes");
-          setPorts();
-          pendingSave = true;
-          doBroadcast = true;
-        } else {
-          dbg.println("Websocket command to update ports, but nothing changed");
-        }
-        makeStatus(doc);
-        doc["success"] = true;
-      }
+  SwitcherooSetPortsMsg* msg = (SwitcherooSetPortsMsg*)mw.message;
+  bool hasOne = false;
+  bool changed = false;
+  for (int i = 0; i < NUM_PORTS; i++) {
+    if (msg->hasPort(i)) {
+      hasOne = true;
+      bool newPortStatus = msg->getPort(i);
+      if (portStatus[i] != newPortStatus) {
+        portStatus[i] = newPortStatus;
+        changed = true;
+      }      
     }
-  } 
-  String jsonStr;
-  
-  if (serializeJson(doc, jsonStr) == 0) {
-    dbg.println("Failed to serialize reply json");
+  }
+  if (!hasOne) {
+    resp.setUnsuccess("No port statuses sent");
   } else {
-    webSocket.sendTXT(num, jsonStr);
+    resp.setSuccess();
+    if (changed) {
+      pendingSave = true;
+      setPorts();
+      doBroadcast = true;
+    }
   }
-  if (doBroadcast) {
-    broadcastState();
-  }
+  mw.reply(resp);
 }
 
 
@@ -218,32 +118,22 @@ void setup() {
   setPorts();
   ezEspSetup(MDNS_NAME, WIFI_SSID, WIFI_PASSWORD);
   
-  dbg.println("Starting websocket...");
-  webSocket.begin();
-  webSocket.onEvent(webSocketEvent);
-  dbg.println("Done with startup");
-
+  server.onMessage(NAMEOF(SwitcherooSetPortsMsg), onSetPorts);
+  server.init();
 }
 void broadcastState() {
-  StaticJsonDocument<512> doc;
-  doc["event"] = "status";
-  makeStatus(doc);
-  String jsonStr;
-  
-  if (serializeJson(doc, jsonStr) == 0) {
-    dbg.eprintln("Failed to serialize broadcast json");
-    return;
-  }
-  webSocket.broadcastTXT(jsonStr);
+  SwitcherooStatusMsg msg(portStatus);
+  server.broadcast(msg);
   dbg.dprintln("broadcast status");
 }
 unsigned long lastTick = 0;
 void loop() {
   ezEspLoop();
-  webSocket.loop();
-  if (millis() - lastTick > 10000) {
+  server.handle();
+  if (millis() - lastTick > 10000 || doBroadcast) {
     broadcastState();
     lastTick = millis();
+    doBroadcast = false;
   }
   if (pendingSave) {
     saveState();

@@ -5,63 +5,61 @@
 #include "DucterMsgs.h"
 #include "HumidifierMsgs.h"
 #include "GbMsg.h"
+#include "LuxSensorMsgs.h"
+#include "LightifyMsgs.h"
 
-
+#pragma once
 GbMsg* parseGbMsg(char* payload, int length) {
-  StaticJsonDocument<512> doc;
+  StaticJsonDocument<MSG_JSON_SIZE> doc;
   auto err = deserializeJson(doc, payload, length);
   if (err) {
     dbg.printf("Error deserializing gb message: %s, data is %s\n", err.c_str(), (char*) payload);
     return NULL;
   }
-
-  if (doc["msgType"].as<String>().equals(NAMEOF(SwitcherooStatusMsg))) {
-    dbg.println("switcheroo status message");
-    return new SwitcherooStatusMsg(doc);
-  } else if (doc["msgType"].as<String>().equals(NAMEOF(SwitcherooSetPortsMsg))) {
-    dbg.println("switcheroo set port message");
-    return new SwitcherooSetPortsMsg(doc);
-  } else if (doc["msgType"].as<String>().equals(NAMEOF(FlowStatusMsg))) {
-    dbg.println("Flow Status message");
-    return new FlowStatusMsg(doc);
-  } else if (doc["msgType"].as<String>().equals(NAMEOF(FlowResetCounterMsg))) {
-    dbg.println("Flow reset counter message");
-    return new FlowResetCounterMsg(doc);
-  }  else if (doc["msgType"].as<String>().equals(NAMEOF(FlowStartOpMsg))) {
-    dbg.println("Flow start op message");
-    return new FlowStartOpMsg(doc);
-  } else if (doc["msgType"].as<String>().equals(NAMEOF(FlowAbortOpMsg))) {
-    dbg.println("Flow abort op message");
-    return new FlowAbortOpMsg(doc);
-  } else if (doc["msgType"].as<String>().equals(NAMEOF(FlowOpStartedMsg))) {
-    dbg.println("Flow op started message");
-    return new FlowOpStartedMsg(doc);
-  } else if (doc["msgType"].as<String>().equals(NAMEOF(FlowOpEndedMsg))) {
-    dbg.println("Flow op ended message");
-    return new FlowOpEndedMsg(doc);
-  } else if (doc["msgType"].as<String>().equals(NAMEOF(GbGetStatusMsg))) {
-    dbg.println("get status message");
-    return new GbGetStatusMsg(doc);
-  } else if (doc["msgType"].as<String>().equals(NAMEOF(GbResultMsg))) { 
-    dbg.println("result msg");
-    return new GbResultMsg(doc);
-  } else if (doc["msgType"].as<String>().equals(NAMEOF(DucterSetDuctsMsg))) { 
-    dbg.println("ducter set ducts msg");
-    return new DucterSetDuctsMsg(doc);
-  } else if (doc["msgType"].as<String>().equals(NAMEOF(DucterStatusMsg))) { 
-    dbg.println("ducter status msg");
-    return new DucterStatusMsg(doc);
-  } else if (doc["msgType"].as<String>().equals(NAMEOF(TempSensorStatusMsg))) { 
-    dbg.println("temp sensor status msg");
-    return new TempSensorStatusMsg(doc);
-  } else if (doc["msgType"].as<String>().equals(NAMEOF(HumidifierSetMsg))) { 
-    dbg.println("humidifier set msg");
-    return new HumidifierSetMsg(doc);
-  } else if (doc["msgType"].as<String>().equals(NAMEOF(HumidifierStatusMsg))) { 
-    dbg.println("humidifier status msg");
-    return new HumidifierStatusMsg(doc);
+  String msgType = doc["msgType"].as<String>();
+  if (msgType != NULL) {
+    if (msgType.equals(NAMEOF(SwitcherooStatusMsg))) {
+      return new SwitcherooStatusMsg(doc);
+    } else if (msgType.equals(NAMEOF(SwitcherooSetPortsMsg))) {
+      return new SwitcherooSetPortsMsg(doc);
+    } else if (msgType.equals(NAMEOF(FlowStatusMsg))) {
+      return new FlowStatusMsg(doc);
+    } else if (msgType.equals(NAMEOF(FlowResetCounterMsg))) {
+      return new FlowResetCounterMsg(doc);
+    }  else if (msgType.equals(NAMEOF(FlowStartOpMsg))) {
+      return new FlowStartOpMsg(doc);
+    } else if (msgType.equals(NAMEOF(FlowAbortOpMsg))) {
+      return new FlowAbortOpMsg(doc);
+    } else if (msgType.equals(NAMEOF(FlowOpStartedMsg))) {
+      return new FlowOpStartedMsg(doc);
+    } else if (msgType.equals(NAMEOF(FlowOpEndedMsg))) {
+      return new FlowOpEndedMsg(doc);
+    } else if (msgType.equals(NAMEOF(GbGetStatusMsg))) {
+      return new GbGetStatusMsg(doc);
+    } else if (msgType.equals(NAMEOF(GbResultMsg))) { 
+      return new GbResultMsg(doc);
+    } else if (msgType.equals(NAMEOF(DucterSetDuctsMsg))) { 
+      return new DucterSetDuctsMsg(doc);
+    } else if (msgType.equals(NAMEOF(DucterStatusMsg))) { 
+      return new DucterStatusMsg(doc);
+    } else if (msgType.equals(NAMEOF(TempSensorStatusMsg))) { 
+      return new TempSensorStatusMsg(doc);
+    } else if (msgType.equals(NAMEOF(HumidifierSetMsg))) { 
+      return new HumidifierSetMsg(doc);
+    } else if (msgType.equals(NAMEOF(HumidifierStatusMsg))) { 
+      return new HumidifierStatusMsg(doc);
+    } else if (msgType.equals(NAMEOF(LuxSensorStatusMsg))) { 
+      return new LuxSensorStatusMsg(doc);
+    } else if (msgType.equals(NAMEOF(LightifySetMsg))) { 
+      return new LightifySetMsg(doc);
+    } else if (msgType.equals(NAMEOF(LightifyStatusMsg))) { 
+      return new LightifyStatusMsg(doc);
+    } else {
+        dbg.printf("Unknown message: %s\n", msgType.c_str());
+        return NULL;
+    }
   } else {
-    dbg.println("Unknown message");
+      dbg.println("Message missing msgType");
       return NULL;
   }
 }

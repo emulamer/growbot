@@ -10,13 +10,13 @@ class HumidifierSetMsg : public GbMsg {
     public:
         virtual String myType() {return NAMEOF(HumidifierSetMsg);}
         HumidifierSetMsg(StaticJsonDocument<MSG_JSON_SIZE> ref) : GbMsg(ref) {};
-        HumidifierSetMsg(String nodeId, int mode, float onPct, float offPct, String sensor) : GbMsg(__FUNCTION__, nodeId) { 
+        HumidifierSetMsg(int mode, float onPct, float offPct, String sensor) : GbMsg(__FUNCTION__) { 
             (*this)["mode"] = mode;
             (*this)["onPct"] = onPct;
             (*this)["offPct"] = offPct;
             (*this)["sensor"] = sensor;
         }
-        HumidifierSetMsg(String msgType, String nodeId, int mode, float onPct, float offPct, String sensor) : GbMsg(msgType, nodeId) { 
+        HumidifierSetMsg(String msgType, int mode, float onPct, float offPct, String sensor) : GbMsg(msgType) { 
             (*this)["mode"] = mode;
             (*this)["onPct"] = onPct;
             (*this)["offPct"] = offPct;
@@ -47,7 +47,7 @@ class HumidifierStatusMsg : public HumidifierSetMsg {
     public:
         virtual String myType() {return NAMEOF(HumidifierStatusMsg);}
         HumidifierStatusMsg(StaticJsonDocument<MSG_JSON_SIZE> ref) : HumidifierSetMsg(ref) {};
-        HumidifierStatusMsg(String nodeId, int mode, float onPct, float offPct, String sensor, bool isOn, float humPct) : HumidifierSetMsg(__FUNCTION__, nodeId, mode, onPct, offPct, sensor) { 
+        HumidifierStatusMsg(int mode, float onPct, float offPct, String sensor, bool isOn, float humPct) : HumidifierSetMsg(__FUNCTION__, mode, onPct, offPct, sensor) { 
             (*this)["humPct"] = humPct;
             (*this)["isOn"] = isOn;
         }

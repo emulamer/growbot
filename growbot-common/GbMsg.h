@@ -11,12 +11,11 @@ class GbMsg : public StaticJsonDocument<MSG_JSON_SIZE> {
         GbMsg(StaticJsonDocument<MSG_JSON_SIZE> ref) : StaticJsonDocument<MSG_JSON_SIZE>(ref) {
         }
 
-        GbMsg(String msgType, String nodeId) : StaticJsonDocument<MSG_JSON_SIZE>() {
+        GbMsg(String msgType) : StaticJsonDocument<MSG_JSON_SIZE>() {
             (*this)["msgId"] = String(random(10000000));
             (*this)["msgType"] = msgType;
             (*this)["nodeType"] = GB_NODE_TYPE;
-            nodeId.replace(":","");
-            (*this)["nodeId"] = MDNS_NAME;
+            (*this)["nodeId"] = GB_NODE_ID;
         }
         virtual ~GbMsg() {};
         String msgId() {
@@ -32,7 +31,10 @@ class GbMsg : public StaticJsonDocument<MSG_JSON_SIZE> {
             return (*this)["nodeType"].as<String>();
         }
         void setReplyToMsgId(String replyToMsgId) {
-            replyToMsgId = replyToMsgId;
+            (*this)["replyTo"] = replyToMsgId;
+        }
+        String replyTo() {
+            return (*this)["replyTo"].as<String>();
         }
         virtual String myType() = 0;
         String toJson() {
@@ -43,14 +45,20 @@ class GbMsg : public StaticJsonDocument<MSG_JSON_SIZE> {
             }
             return jsonStr;
         }
+        void setNodeId(String nodeId) {
+            (*this)["nodeId"] = nodeId;
+        }
+        void setNodeType(String nodeId) {
+            (*this)["nodeType"] = nodeId;
+        }
 };
 class GbResultMsg : public GbMsg {
     public:
         String myType() { return NAMEOF(GbResultMsg);}
         GbResultMsg(StaticJsonDocument<MSG_JSON_SIZE> ref) : GbMsg(ref) {}
-        GbResultMsg(String msgType, String nodeId) : GbMsg(msgType, nodeId) {
+        GbResultMsg(String msgType) : GbMsg(msgType) {
         }
-        GbResultMsg(String nodeId) : GbMsg(NAMEOF(GbResultMsg), nodeId) {
+        GbResultMsg() : GbMsg(NAMEOF(GbResultMsg)) {
         }
         virtual ~GbResultMsg() {};
         void setSuccess() {
@@ -73,7 +81,7 @@ class GbGetStatusMsg : public GbMsg {
         GbGetStatusMsg(StaticJsonDocument<MSG_JSON_SIZE> ref) : GbMsg(ref) {
         }
 
-        GbGetStatusMsg(String nodeId) : GbMsg(NAMEOF(GbGetStatusMsg), nodeId) {
+        GbGetStatusMsg() : GbMsg(NAMEOF(GbGetStatusMsg)) {
         }
         virtual ~GbGetStatusMsg() {};
 };

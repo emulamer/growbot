@@ -47,7 +47,8 @@ class Max44009Sensor : public LuxSensor {
             if (this->isMultiplexer) {
                 this->plexer->setBus(this->busNum);
             }
-            this->myLux.setManualMode(CDR, TIM);
+            this->myLux.setAutomaticMode();
+            this->myLux.setContinuousMode();
             int err = this->myLux.getError();
             if (err != 0)
             {

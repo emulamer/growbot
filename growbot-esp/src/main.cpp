@@ -1,5 +1,6 @@
 #define LOG_UDP_PORT 44444
 #define GB_NODE_TYPE "growbot-esp"
+#define GB_NODE_ID "growbot-esp"
 #include <EzEsp.h>
 #include <Arduino.h>
 #include <ArduinoOTA.h>
@@ -30,6 +31,7 @@
 #include "PumpControl.h"
 #include <esp_task_wdt.h>
 #include <Ticker.h>
+#include <StaticServer.h>
 MQTTDataConnection dataConn(MQTT_HOST, MQTT_PORT, MQTT_TOPIC, MQTT_CONFIG_TOPIC);
 EEPROMNVStore nvStore;
 
@@ -60,7 +62,7 @@ TwoWire* i2cBus = &Wire;
 TwoWire* i2cBus2 = &Wire1;
 I2CMultiplexer i2cMultiplexer(i2cBus, i2cBus2, I2C_MULTIPLEXER2_ADDRESS);
 PowerControl powerCtl(i2cBus, I2C_POWER_CTL_ADDR);
-SwitcherooWiFi* switcheroo = new SwitcherooWiFi("growbot-switcheroo");
+SwitcherooWiFi* switcheroo = new SwitcherooWiFi();
 TimeKeeper* lightsTimekeeper = new TimeKeeper(switcheroo, SWITCHEROO_LIGHTS_PORT, &config.lightSchedule, &data.lightsOn);
 TimeKeeper* roomFansTimekeeper = new TimeKeeper(switcheroo, SWITCHEROO_ROOM_FAN_PORT, &config.roomFanSchedule, &data.roomFanOn);
 PumpControl* pumpControl = new PumpControl(switcheroo, SWITCHEROO_PUMP_PORT, &data, &config.pumpOn);
@@ -90,6 +92,7 @@ void doImportantTicks() {
   dataConn.handle();
   sensorama.handle();
   switcheroo->handle();
+  server.handle();
   if (doSendState) {
     sendState();
   }
@@ -184,7 +187,16 @@ void debug_scan_i2c(TwoWire *wire) {
     dbg.printf("done\n");
 }
 
-
+void sendSensorMessages() {
+  TempSensorStatusMsg msg(data.ambientInternal1.temperatureC, data.ambientInternal1.humidity);
+  msg.setNodeType("growbot-temp");
+  msg.setNodeId("ambient-temp");
+  server.broadcast(msg);
+  LuxSensorStatusMsg msg2(data.luxAmbient1);
+  msg2.setNodeType("growbot-lux");
+  msg2.setNodeId("plant-top-lux");
+  server.broadcast(msg2);
+}
 void updateFromConfig() {
 
   sensorama.configChanged();
@@ -417,6 +429,7 @@ void setup() {
   ezEspLoop();
   sensorama.update();
   delay(1000);
+  server.init();
 }
 unsigned long nextTick = 0;
 bool tickNow() {
@@ -438,6 +451,7 @@ void loop() {
       updateThermostats();
       pumpControl->handle();
       sendState();
+      sendSensorMessages();
       dbg.dprintf("Waiting to tick again for %d\n", config.samplingIntervalMS);
     }
   } else if (operating_mode == GROWBOT_MODE_CALIBRATING_PH_SENSOR ||

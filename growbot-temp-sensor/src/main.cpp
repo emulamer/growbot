@@ -1,4 +1,5 @@
 #define GB_NODE_TYPE "growbot-temp"
+#define GB_NODE_ID MDNS_NAME
 
 // #define MDNS_NAME "growbot-inside-intake-temp"
 // #define LOG_UDP_PORT 44448
@@ -17,8 +18,7 @@
 
 SHTC3 tempSensor;
 unsigned long lastTick = 0;
-//WebSocketsServer wsServer(8118);
-MessengerServer server(WiFi.macAddress(), 8118);
+UdpMessengerServer server(45678);
 
 bool sensorOk = false;
 bool initSensor() {
@@ -49,6 +49,7 @@ void setup() {
   Serial.begin(115200);     
   ezEspSetup(MDNS_NAME, "MaxNet", "88888888");
   initSensor();
+  server.init();
 }
 
 void loop() {
@@ -87,9 +88,8 @@ void loop() {
         }
       }
     }
-    TempSensorStatusMsg status(WiFi.macAddress(), tempc, rh);
+    TempSensorStatusMsg status(tempc, rh);
     server.broadcast(status);
-
     lastTick = millis();
   }
    

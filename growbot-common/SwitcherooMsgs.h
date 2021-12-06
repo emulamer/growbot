@@ -11,7 +11,7 @@ class SwitcherooStatusMsg : public GbMsg {
     public:
         String myType() {return NAMEOF(SwitcherooStatusMsg);}
         SwitcherooStatusMsg(StaticJsonDocument<MSG_JSON_SIZE> ref) : GbMsg(ref) {};
-        SwitcherooStatusMsg(String nodeId, bool portStatus[6]) : GbMsg(__FUNCTION__, nodeId) {
+        SwitcherooStatusMsg(bool portStatus[6]) : GbMsg(__FUNCTION__) {
             (*this)["status"]["ports"]["port0"] = portStatus[0];
             (*this)["status"]["ports"]["port1"] = portStatus[1];
             (*this)["status"]["ports"]["port2"] = portStatus[2];
@@ -35,24 +35,17 @@ class SwitcherooSetPortsMsg : public GbMsg {
     public:
         String myType() { return NAMEOF(SwitcherooSetPortsMsg);}
         SwitcherooSetPortsMsg(StaticJsonDocument<MSG_JSON_SIZE> ref) : GbMsg(ref) {}
-        SwitcherooSetPortsMsg(String nodeId, SwitcherooPortStatus ports) : GbMsg(NAMEOF(SwitcherooSetPortsMsg), nodeId) {
-            (*this)["ports"]["port0"] = ports.portStatus[0];
-            (*this)["ports"]["port1"] = ports.portStatus[1];
-            (*this)["ports"]["port2"] = ports.portStatus[2];
-            (*this)["ports"]["port3"] = ports.portStatus[3];
-            (*this)["ports"]["port4"] = ports.portStatus[4];
-            (*this)["ports"]["port5"] = ports.portStatus[5];
+        SwitcherooSetPortsMsg() : GbMsg(NAMEOF(SwitcherooSetPortsMsg)) {
         }
         virtual ~SwitcherooSetPortsMsg() {}
 
-        SwitcherooPortStatus ports() {
-            return {
-                (*this)["ports"]["port0"].as<bool>(),
-                (*this)["ports"]["port1"].as<bool>(),
-                (*this)["ports"]["port2"].as<bool>(),
-                (*this)["ports"]["port3"].as<bool>(),
-                (*this)["ports"]["port4"].as<bool>(),
-                (*this)["ports"]["port5"].as<bool>()
-            };
+        bool hasPort(int portNum) {
+            return (*this)["ports"].containsKey(String("port")+String(portNum));
+        }
+        bool getPort(int portNum) {
+            return (*this)["ports"][String("port")+String(portNum)];
+        }
+        void setPort(int portNum, bool isOn) {
+            (*this)["ports"][String("port")+String(portNum)] = isOn;
         }
 };

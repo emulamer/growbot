@@ -1,10 +1,14 @@
+#define WIFI_SSID "MaxNet"
+#define WIFI_PASSWORD "88888888"
+#define MDNS_NAME "growbot-flow"
 #define LOG_UDP_PORT 44446
 #define GB_NODE_TYPE "growbot-flow"
+#define GB_NODE_ID MDNS_NAME
 #include <EzEsp.h>
 #include <Arduino.h>
 #include <ArduinoOTA.h>
 #include <WiFi.h>
-#include <WebSocketsServer.h>
+//#include <WebSocketsServer.h>
 #include "FlowMeter.h"
 #include <ESP32AnalogRead.h>
 #include "WaterLevel.h"
@@ -16,12 +20,12 @@
 #include <ESPRandom.h>
 #include "FlowOperation.h"
 #include "FlowMsgs.h"
+#include <WSMessenger.h>
 #include "MessageParser.h"
 
-#define WIFI_SSID "MaxNet"
-#define WIFI_PASSWORD "88888888"
-#define MDNS_NAME "growbot-flow"
-#define WEBSOCKET_PORT 8118
+
+
+//#define WEBSOCKET_PORT 8118
 
 #define LOOP_ON_PIN 25
 #define LOOP_OFF_PIN 26
@@ -58,7 +62,8 @@ struct FlowParts {
 
 FlowParts flowParts;
 
-WebSocketsServer webSocket(WEBSOCKET_PORT);   
+//WebSocketsServer webSocket(WEBSOCKET_PORT);   
+UdpMessengerServer server(45678);
 
 
 void broadcastOpComplete() {
@@ -70,9 +75,8 @@ void broadcastOpComplete() {
   fi.litersIn = inFlowMeter.getLitersSinceReset();
   fi.litersOut = outFlowMeter.getLitersSinceReset();
   fi.waterLevel = waterLevel.getWaterLevel();
-  FlowOpEndedMsg msg(WiFi.macAddress(), fi);
-  String jsonStr = msg.toJson();
-  webSocket.broadcastTXT(jsonStr);
+  FlowOpEndedMsg msg(fi);
+  server.broadcast(msg);
 }
 
 void abortOp() {
@@ -92,9 +96,8 @@ void broadcastOpStart() {
   fi.litersIn = inFlowMeter.getLitersSinceReset();
   fi.litersOut = outFlowMeter.getLitersSinceReset();
   fi.waterLevel = waterLevel.getWaterLevel();
-  FlowOpStartedMsg msg(WiFi.macAddress(), fi);
-  String jsonStr = msg.toJson();
-  webSocket.broadcastTXT(jsonStr);
+  FlowOpStartedMsg msg(fi);
+  server.broadcast(msg);
 }
 void broadcastStatus() {
   FlowInfo info;
@@ -104,9 +107,8 @@ void broadcastStatus() {
   info.inValveOpen = inValve->isOpen();
   info.outValveOpen = outValve->isOpen();
   info.currentOperation = currentFlowOp;
-  FlowStatusMsg status(WiFi.macAddress(), info);
-  String jsonStr = status.toJson();
-  webSocket.broadcastTXT(jsonStr);
+  FlowStatusMsg status(info);
+  server.broadcast(status);
   dbg.dprintln("broadcast status");
 }
 
@@ -118,133 +120,90 @@ void startOp(FlowOp* newOp) {
   currentFlowOp->start();
   broadcastOpStart();
 }
-void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length) {   
-  if (type == WStype_CONNECTED) {
-    dbg.println("got a websocket connection");
-    return;
-  }
-  if (type == WStype_DISCONNECTED) {
-    dbg.println("a websocket disconnected");
-    return;
-  }
-  if (type != WStype_TEXT) {
-    dbg.println("got a non-text websocket message, ignoring it");
-    return;
-  }
-  if (length < 2) {
-    dbg.dprintln("too short ws text message, ignoring");
-    return;
-  }
-  if (length > 500) {
-    dbg.printf("got too big a websocket message, it was %d bytes\n", length);
-  }
-  dbg.println("about to try parsing");
-  GbMsg* msg = parseGbMsg((char*)payload, length);
-  if (msg == NULL) {
-    dbg.println("parsing failed, returned null");
-    return;
+void onStartOpMsg(MessageWrapper& mw) {
+  GbResultMsg res;
+  dbg.dprintln("got a start op message");
+  if (currentFlowOp != NULL && !currentFlowOp->isDone()) {
+    dbg.println("tried to start another op with one in progress");
+    res.setUnsuccess("Another operation is in progress");
   } else {
-    dbg.printf("parsing success, type is %s\n", msg->myType().c_str());
-  }
-  GbResultMsg res(WiFi.macAddress());
-  if (msg->msgId() != NULL) {
-    res.setReplyToMsgId(msg->msgId());
-  }
-  String msgType = msg->msgType();
-  if (msgType == NULL) {
-    dbg.println("message with no message type");
-    res.setUnsuccess("msgType was missing");
-
-  } else if (msgType.equals(NAMEOF(FlowStartOpMsg))) {
-    dbg.dprintln("got a start op message");
-    if (currentFlowOp != NULL && !currentFlowOp->isDone()) {
-      dbg.println("tried to start another op with one in progress");
-      res.setUnsuccess("Another operation is in progress");
-    } else {
-      FlowStartOpMsg* smsg = (FlowStartOpMsg*)msg;
-      String op = smsg->op();      
-      if (op == NULL || op.equals("null")) {
-        dbg.printf("op must be provided\n");
-        res.setUnsuccess("op must be provided");
-      } else  {
-        int paramCtr = smsg->paramCount();
-        if (op.equals(FlowOpType::DrainToPercent)) {
-          if (paramCtr < 1) {
-            dbg.printf("didn't get enough parameters for DrainToPercent op\n");
-            res.setUnsuccess("DrainToPercent requires the percent to drain to");
-          } else {
-            startOp(new DrainToPercentEnsured(&waterLevel, outValve, &inFlowMeter, &outFlowMeter, smsg->param(0)));
-            res.setSuccess();
-          }
-        } else if (op.equals(FlowOpType::Empty)) {
-          startOp(new EmptyOp(&waterLevel, outValve, &inFlowMeter, &outFlowMeter));
-        } else if (op.equals(FlowOpType::FillToPercent)) {
-          if (paramCtr < 1) {
-            dbg.printf("didn't get enough parameters for FillToPercent op\n");
-            res.setUnsuccess("FillToPercent requires the percent to drain to");
-          } else {
-            startOp(new FillToPercentEnsured(&waterLevel, inValve, &inFlowMeter, &outFlowMeter, smsg->param(0)));
-            res.setSuccess();
-          }
-        } else if (op.equals(FlowOpType::Flush)) {
-            startOp(new FlushOp(&waterLevel, inValve, outValve, &inFlowMeter, &outFlowMeter, paramCtr>0?smsg->param(0):1,paramCtr>1?smsg->param(1):15, paramCtr>2?smsg->param(2):300));
-            res.setSuccess();
-        } else if (op.equals(FlowOpType::FlushAndFillToPercent)) {
-          if (paramCtr < 1) {
-            dbg.printf("didn't get enough parameters for FlushAndFillToPercent op\n");
-            res.setUnsuccess("FlushAndFillToPercent requires at least the final fill percent, and optionally the number of rinses, the rinse fill percent, and the amount of seconds to rinse");
-          } else {
-            startOp(new FlushAndFillToPercentOp(&waterLevel, inValve, outValve, &inFlowMeter, &outFlowMeter, smsg->param(0),paramCtr>1?smsg->param(1):1, paramCtr>2?smsg->param(2):15, paramCtr>3?(int)smsg->param(3):300));
-            res.setSuccess();
-          }
+    FlowStartOpMsg* smsg = (FlowStartOpMsg*)mw.message;
+    String op = smsg->op();      
+    if (op == NULL || op.equals("null")) {
+      dbg.printf("op must be provided\n");
+      res.setUnsuccess("op must be provided");
+    } else  {
+      int paramCtr = smsg->paramCount();
+      if (op.equals(FlowOpType::DrainToPercent)) {
+        if (paramCtr < 1) {
+          dbg.printf("didn't get enough parameters for DrainToPercent op\n");
+          res.setUnsuccess("DrainToPercent requires the percent to drain to");
         } else {
-          dbg.printf("Got unknown op to start: %s\n", smsg->op().c_str());
-          res.setUnsuccess("Unknown op");
-        }  
-      }
+          startOp(new DrainToPercentEnsured(&waterLevel, outValve, &inFlowMeter, &outFlowMeter, smsg->param(0)));
+          res.setSuccess();
+        }
+      } else if (op.equals(FlowOpType::Empty)) {
+        startOp(new EmptyOp(&waterLevel, outValve, &inFlowMeter, &outFlowMeter));
+      } else if (op.equals(FlowOpType::FillToPercent)) {
+        if (paramCtr < 1) {
+          dbg.printf("didn't get enough parameters for FillToPercent op\n");
+          res.setUnsuccess("FillToPercent requires the percent to drain to");
+        } else {
+          startOp(new FillToPercentEnsured(&waterLevel, inValve, &inFlowMeter, &outFlowMeter, smsg->param(0)));
+          res.setSuccess();
+        }
+      } else if (op.equals(FlowOpType::Flush)) {
+          startOp(new FlushOp(&waterLevel, inValve, outValve, &inFlowMeter, &outFlowMeter, paramCtr>0?smsg->param(0):1,paramCtr>1?smsg->param(1):15, paramCtr>2?smsg->param(2):300));
+          res.setSuccess();
+      } else if (op.equals(FlowOpType::FlushAndFillToPercent)) {
+        if (paramCtr < 1) {
+          dbg.printf("didn't get enough parameters for FlushAndFillToPercent op\n");
+          res.setUnsuccess("FlushAndFillToPercent requires at least the final fill percent, and optionally the number of rinses, the rinse fill percent, and the amount of seconds to rinse");
+        } else {
+          startOp(new FlushAndFillToPercentOp(&waterLevel, inValve, outValve, &inFlowMeter, &outFlowMeter, smsg->param(0),paramCtr>1?smsg->param(1):1, paramCtr>2?smsg->param(2):15, paramCtr>3?(int)smsg->param(3):300));
+          res.setSuccess();
+        }
+      } else {
+        dbg.printf("Got unknown op to start: %s\n", smsg->op().c_str());
+        res.setUnsuccess("Unknown op");
+      }  
     }
-  } else if (msgType.equals(NAMEOF(FlowResetCounterMsg))) {
-    dbg.dprintln("got restart counter message");
-    FlowResetCounterMsg* smsg = (FlowResetCounterMsg*)msg;
-    String ctr = smsg->counterName();
-    if (ctr == NULL) {
-      dbg.printf("counterName must be provided\n");
-    } else if (ctr.equals("litersIn")) {
-      float val = smsg->fromAmount();
-      inFlowMeter.resetFrom((val <=0 )?inFlowMeter.getLitersSinceReset():val);
-      res.setSuccess();
-      broadcastStatus();
-    } else if (ctr.equals("litersOut")) {
-      float val = smsg->fromAmount();
-      outFlowMeter.resetFrom((val <=0 )?outFlowMeter.getLitersSinceReset():val);
-      res.setSuccess();
-      broadcastStatus();
-    } else {
-      dbg.printf("Got unknown reset counterName: %s\n", smsg->counterName().c_str());
-      res.setUnsuccess("Unknown counterName");
-    }
-  } else if (msgType.equals(NAMEOF(FlowAbortOpMsg))) {
-    dbg.dprintln("got abort op message");
-    if (currentFlowOp == NULL || currentFlowOp->isDone()) {
-      res.setUnsuccess("There is no operation in progress");
-    } else {
-      currentFlowOp->abort();
-      broadcastOpComplete();
-      res.setSuccess();
-    }
-  } else if (msgType.equals(NAMEOF(GbGetStatusMsg))) {
-    broadcastStatus();
-    res.setSuccess();
-  } else {
-    dbg.dprintf("got unknown msg: %s\n", payload);
-    res.setUnsuccess("Unknown message type");
   }
-  String json = res.toJson();
-  webSocket.sendTXT(num, json);
-  delete msg;
+  mw.reply(res);
 }
-
-
+void onAbortOpMsg(MessageWrapper& mw) {
+  GbResultMsg res;
+  if (currentFlowOp == NULL || currentFlowOp->isDone()) {
+    res.setUnsuccess("There is no operation in progress");
+  } else {
+    currentFlowOp->abort();
+    broadcastOpComplete();
+    res.setSuccess();
+  }
+  mw.reply(res);
+}
+void onResetCounterMsg(MessageWrapper& mw) {
+  GbResultMsg res;
+  FlowResetCounterMsg* smsg = (FlowResetCounterMsg*)mw.message;
+  String ctr = smsg->counterName();
+  if (ctr == NULL) {
+    dbg.printf("counterName must be provided\n");
+  } else if (ctr.equals("litersIn")) {
+    float val = smsg->fromAmount();
+    inFlowMeter.resetFrom((val <=0 )?inFlowMeter.getLitersSinceReset():val);
+    res.setSuccess();
+    broadcastStatus();
+  } else if (ctr.equals("litersOut")) {
+    float val = smsg->fromAmount();
+    outFlowMeter.resetFrom((val <=0 )?outFlowMeter.getLitersSinceReset():val);
+    res.setSuccess();
+    broadcastStatus();
+  } else {
+    dbg.printf("Got unknown reset counterName: %s\n", smsg->counterName().c_str());
+    res.setUnsuccess("Unknown counterName");
+  }
+  mw.reply(res);
+}
 
 void setup() {
   pinMode(LOOP_ON_PIN, OUTPUT);
@@ -269,15 +228,15 @@ void setup() {
               broadcastOpComplete();
             }            
         });  
-  dbg.println("Starting websocket...");
-  webSocket.begin();
-  webSocket.onEvent(webSocketEvent);
-
+  server.onMessage(NAMEOF(FlowStartOpMsg), onStartOpMsg);
+  server.onMessage(NAMEOF(FlowResetCounterMsg), onResetCounterMsg);
+  server.onMessage(NAMEOF(FlowAbortOpMsg), onAbortOpMsg);
+  server.init();
 }
 unsigned long last = millis();
 void loop() {
   ezEspLoop();
-  webSocket.loop();  
+  server.handle();  
   inValve->update();
   outValve->update();
   waterLevel.update();

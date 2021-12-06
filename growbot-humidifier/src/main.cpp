@@ -1,13 +1,13 @@
 #define GB_NODE_TYPE "growbot-humidifier"
 #define MDNS_NAME "growbot-humidifier"
+#define GB_NODE_ID MDNS_NAME
 #define LOG_UDP_PORT 44453
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
 #include <ArduinoOTA.h>
 #include <WiFiUdp.h>
 #include <EzEsp.h>
-#include <WebSocketsServer.h>
-#include <WebSocketsClient.h>
+
 #include <WSMessenger.h>
 #include <HumidifierMsgs.h>
 #include <EEPROM.h>
@@ -15,8 +15,8 @@
 #define HUMIDIFIER_PIN 3
 #define SOCKET_RECONNECT_PERIOD 30000
 unsigned long lastTick = 0;
-MessengerServer server(WiFi.macAddress(), 8118);
-WebSocketsClient webSocket;
+UdpMessengerServer server(45678);
+//WebSocketsClient webSocket;
 int currentMode = 0;
 float onHumidityPercent = NAN;
 float offHumidityPercent = NAN;
@@ -50,65 +50,73 @@ bool setHumidifier() {
     }
     return false;
 }
-unsigned long lastConnectAttemp = 0;
-String currentSocketHost = "";
-void checkSocketClient() {
-    if (currentSocketHost.equals(targetSensorName)) {
-      return;
-    }
-    if (webSocket.isConnected()) {
-      dbg.printf("Disconnecting websocket...");
-      webSocket.disconnect();
-    } else if (millis() - lastConnectAttemp < SOCKET_RECONNECT_PERIOD) {
-      return;
-    }
-    lastConnectAttemp = millis();
-    if (targetSensorName.length() < 1 || targetSensorName.equals("null")) {
-      dbg.printf("target sensor name isn't set!\n");
-      return;
-    }
-    dbg.printf("connecting to target sensor: %s\n", targetSensorName.c_str());
-    IPAddress addr;
-    if (!Resolver.resolve(targetSensorName, &addr)) {
-      dbg.printf("Failed to resolve target sensor name %s!\n", targetSensorName.c_str());
-    } else {
-      dbg.printf("Resolved %s to %s, connecting...\n", targetSensorName.c_str(), addr.toString().c_str());
-      webSocket.begin(addr, 8118);
-    }      
-}
-void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
-    switch(type) {
-        case WStype_DISCONNECTED:
-            dbg.eprintf("client: websocket disconnected!\n");
-            break;
-        case WStype_CONNECTED:
-            dbg.println("client: websocket connected");
-            currentSocketHost = targetSensorName;
-            break;
-        case WStype_TEXT:
-            GbMsg* msg = parseGbMsg((char*)payload, length);
-            if (msg == NULL) {
-                dbg.wprintln("client: unparseable message!");
-                return;
-            }
-            if (msg->myType().equals(NAMEOF(TempSensorStatusMsg))) {
-                TempSensorStatusMsg* m = (TempSensorStatusMsg*)msg;
-                currentHumidityPercent = m->humidityPercent();                
-                dbg.dprintf("client: got updated humidity: %f\n", currentHumidityPercent);
-            } else {
-                dbg.dprintf("client: some other msg type we don't care: %s\n", msg->myType().c_str());
-            }
-            delete msg;
-            break;
-    }
-}
+// unsigned long lastConnectAttemp = 0;
+// String currentSocketHost = "";
+// void checkSocketClient() {
+//     if (currentSocketHost.equals(targetSensorName)) {
+//       return;
+//     }
+//     if (webSocket.isConnected()) {
+//       dbg.printf("Disconnecting websocket...");
+//       webSocket.disconnect();
+//     } else if (millis() - lastConnectAttemp < SOCKET_RECONNECT_PERIOD) {
+//       return;
+//     }
+//     lastConnectAttemp = millis();
+//     if (targetSensorName.length() < 1 || targetSensorName.equals("null")) {
+//       dbg.printf("target sensor name isn't set!\n");
+//       return;
+//     }
+//     dbg.printf("connecting to target sensor: %s\n", targetSensorName.c_str());
+//     IPAddress addr;
+//     if (!Resolver.resolve(targetSensorName, &addr)) {
+//       dbg.printf("Failed to resolve target sensor name %s!\n", targetSensorName.c_str());
+//     } else {
+//       dbg.printf("Resolved %s to %s, connecting...\n", targetSensorName.c_str(), addr.toString().c_str());
+//       webSocket.begin(addr, 8118);
+//     }      
+// }
+//  void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
+//     switch(type) {
+//         case WStype_DISCONNECTED:
+//             dbg.eprintf("client: websocket disconnected!\n");
+//             break;
+//         case WStype_CONNECTED:
+//             dbg.println("client: websocket connected");
+//             currentSocketHost = targetSensorName;
+//             break;
+//         case WStype_TEXT:
+//             GbMsg* msg = parseGbMsg((char*)payload, length);
+//             if (msg == NULL) {
+//                 dbg.wprintln("client: unparseable message!");
+//                 return;
+//             }
+//             if (msg->myType().equals(NAMEOF(TempSensorStatusMsg))) {
+//                 TempSensorStatusMsg* m = (TempSensorStatusMsg*)msg;
+//                 currentHumidityPercent = m->humidityPercent();                
+//                 dbg.dprintf("client: got updated humidity: %f\n", currentHumidityPercent);
+//             } else {
+//                 dbg.dprintf("client: some other msg type we don't care: %s\n", msg->myType().c_str());
+//             }
+//             delete msg;
+//             break;
+//     }
+// }
 void broadcastStatus() {
-  HumidifierStatusMsg status(WiFi.macAddress(), currentMode, onHumidityPercent, offHumidityPercent, targetSensorName, isOn, currentHumidityPercent);
+  HumidifierStatusMsg status(currentMode, onHumidityPercent, offHumidityPercent, targetSensorName, isOn, currentHumidityPercent);
   server.broadcast(status);
+}
+void sensorMsg(MessageWrapper& mw) {
+  TempSensorStatusMsg* msg = (TempSensorStatusMsg*)mw.message;
+  String nodeId = msg->nodeId();
+  if (!(nodeId != NULL && nodeId.equals(targetSensorName))) {
+    return;
+  }
+  currentHumidityPercent = msg->humidityPercent();
 }
 void setMsg(MessageWrapper& mw) {
   HumidifierSetMsg* msg = (HumidifierSetMsg*)mw.message;
-  GbResultMsg repl(WiFi.macAddress());
+  GbResultMsg repl;
   int mode = msg->mode();
   String sensorName = msg->sensor();
   float onPct = msg->onPct();
@@ -202,23 +210,25 @@ void setup() {
   dbg.printf("target sensor name: %s\n", targetSensorName.c_str());
   
   server.onMessage(NAMEOF(HumidifierSetMsg), setMsg);
-  webSocket.onEvent(webSocketEvent);
-  webSocket.setReconnectInterval(SOCKET_RECONNECT_PERIOD);
-  webSocket.enableHeartbeat(10000, 3000, 2);
+  server.onMessage(NAMEOF(TempSensorStatusMsg), sensorMsg);
+  // webSocket.onEvent(webSocketEvent);
+  // webSocket.setReconnectInterval(SOCKET_RECONNECT_PERIOD);
+  // webSocket.enableHeartbeat(10000, 3000, 2);
+  server.init();
 }
 
 void loop() {
   ezEspLoop();
   server.handle();
-  webSocket.loop();
+  //webSocket.loop();
 
   setHumidifier();
   if (millis() - lastTick > 5000) {  
-      if (!webSocket.isConnected()) {
-      checkSocketClient();
-    }  
+    //   if (!webSocket.isConnected()) {
+    //   checkSocketClient();
+    // }  
     dbg.printf("device %s, free heap: %d\n", MDNS_NAME, ESP.getFreeHeap());
-    dbg.printf("isOn: %d, target sensor: %s, currentHumidityPercent: %f, mode: %d, on at: %f, off at: %f, sensor connected: %d\n", isOn, targetSensorName.c_str(), currentHumidityPercent, currentMode, onHumidityPercent, offHumidityPercent, webSocket.isConnected());
+    dbg.printf("isOn: %d, target sensor: %s, currentHumidityPercent: %f, mode: %d, on at: %f, off at: %f\n", isOn, targetSensorName.c_str(), currentHumidityPercent, currentMode, onHumidityPercent, offHumidityPercent);
     
     broadcastStatus();
     lastTick = millis();

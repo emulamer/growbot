@@ -7,7 +7,7 @@ class TempSensorStatusMsg : public GbMsg {
     public:
         String myType() {return NAMEOF(TempSensorStatusMsg);}
         TempSensorStatusMsg(StaticJsonDocument<MSG_JSON_SIZE> ref) : GbMsg(ref) {};
-        TempSensorStatusMsg(String nodeId, float tempC, float humidityPercent) : GbMsg(__FUNCTION__, nodeId) { 
+        TempSensorStatusMsg(float tempC, float humidityPercent) : GbMsg(__FUNCTION__) { 
             if (isnan(tempC)) {
                // (*this)["tempC"] = NULL;
             } else {
