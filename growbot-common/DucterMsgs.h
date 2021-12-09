@@ -9,7 +9,7 @@ class DucterStatusMsg : public GbMsg {
     public:
         String myType() {return NAMEOF(DucterStatusMsg);}
         DucterStatusMsg(StaticJsonDocument<MSG_JSON_SIZE> ref) : GbMsg(ref) {};
-        DucterStatusMsg(int mode, String targetSensorName, float insideOpenPercent, float outsideOpenPercent, float targetTempC, String msgType = NAMEOF(DucterStatusMsg)) : GbMsg(msgType) {
+        DucterStatusMsg(int mode, float insideOpenPercent, float outsideOpenPercent, float targetTempC, String msgType = NAMEOF(DucterStatusMsg)) : GbMsg(msgType) {
             if (isnan(insideOpenPercent)) {
                 (*this)["insideOpenPercent"] = NULL;
             } else {
@@ -24,12 +24,9 @@ class DucterStatusMsg : public GbMsg {
                 (*this)["targetTempC"] = targetTempC;
             }
             
-            (*this)["sensor"] = targetSensorName;
             (*this)["mode"] = mode;
         }
-        String targetSensorName() {
-            return (*this)["sensor"].as<String>();
-        }
+
         int mode() {
             return (*this)["mode"].as<int>();
         }
@@ -58,7 +55,7 @@ class DucterSetDuctsMsg : public DucterStatusMsg {
     public:
         String myType() {return NAMEOF(DucterSetDuctsMsg);}
         DucterSetDuctsMsg(StaticJsonDocument<MSG_JSON_SIZE> ref) : DucterStatusMsg(ref) {};
-        DucterSetDuctsMsg(int mode, String targetSensorName, float insideOpenPercent, float outsideOpenPercent, float targetTempC) : DucterStatusMsg(mode, targetSensorName, insideOpenPercent, outsideOpenPercent, targetTempC, __FUNCTION__) {
+        DucterSetDuctsMsg(int mode, float insideOpenPercent, float outsideOpenPercent, float targetTempC) : DucterStatusMsg(mode, insideOpenPercent, outsideOpenPercent, targetTempC, __FUNCTION__) {
         }
 
         virtual ~DucterSetDuctsMsg() {}

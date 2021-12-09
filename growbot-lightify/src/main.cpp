@@ -4,7 +4,7 @@
 #define GB_NODE_ID MDNS_NAME
 #define LOG_UDP_PORT 44454
 #include <Arduino.h>
-#include <ESP8266WiFi.h>
+#include <WiFi.h>
 #include <ArduinoOTA.h>
 #include <WiFiUdp.h>
 #include <EzEsp.h>
@@ -14,7 +14,7 @@
 #include <EEPROM.h>
 #include <LuxSensorMsgs.h>
 
-#define LEDPWM_PIN 3
+#define LEDPWM_PIN 14
 #define SWITCHEROO_LIGHTS_PORT 1 
 #define LUX_MIN_RESOLUTION 1000
 #define MAX_LUX 50000
@@ -57,7 +57,7 @@ void setLight() {
     } else if (currentLightPercent > 100) {
       currentLightPercent = 100;
     }
-   analogWrite(LEDPWM_PIN, (int)((currentLightPercent/100.0) * 1023.0));
+    ledcWrite(0, (int)((currentLightPercent/100.0) * 1023.0));
   }
 }
 
@@ -146,13 +146,11 @@ void setMsg(MessageWrapper& mw) {
 
 void setup() {
   EEPROM.begin(512);
-   pinMode(0, INPUT);
-   pinMode(2, INPUT);
-   
- // pinMode(LEDPWM_PIN, FUNCTION_3); 
+
   pinMode(LEDPWM_PIN, OUTPUT);  
   digitalWrite(LEDPWM_PIN, LOW);
-  analogWriteResolution(10);
+  ledcSetup(0, 1500, 10);
+  ledcAttachPin(LEDPWM_PIN, 0);
   ezEspSetup(MDNS_NAME, "MaxNet", "88888888");
   EEPROM.get(0, currentMode);
   EEPROM.get(4, targetLux);  

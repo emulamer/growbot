@@ -13,24 +13,75 @@
 #include <Servo.h>
 #include <EEPROM.h>
 #include <DucterMsgs.h>
-
+#define SWITCHEROO_LIGHTS_PORT 1 
 #define INSIDE_DUCT_PIN 3
 #define OUTSIDE_DUCT_PIN 1
 #define ADJUST_FREQ_MS 50000
 #define IN_TEMP_SENSOR "growbot-inside-intake-temp"
 #define OUT_TEMP_SENSOR "growbot-outside-intake-temp"
 
+#define MIX_STABILIZATION_TIME 60000
+#define AMBIENT_STABILIZATION_TIME 120000
+
+#define LIGHT_TEMP_MIX_DIFF 5.0
+
 float inTemp = NAN;
 float outTemp = NAN;
 
+float mixAirOffset  
 
-String targetSensorName = "";
+#define ADJUST_THRESHOLD 0.15
+
+#define STABLIZE_THRESHOLD 0.1
+
+#define AMBIENT_SENSOR_NAME "ambient-temp"
+#define MIX_SENSOR_NAME "growbot-mix-intake-temp"
+///String targetSensorName = "";
 float insidePct = 100;
 float outsidePct = 0;
 float targetTempC = 20;
-float currentTemp = NAN;
+float ambientTemp = NAN;
+float mixTemp = NAN;
 int currentMode = DUCTER_MODE_MANUAL;
+bool lightsOn = false;
 
+
+float mixAmbientOffset = 0;
+
+#define ADJUST_STAGE_NONE 0
+#define ADJUST_STAGE_MIX 1
+#define ADJUST_STAGE_AMBIENT 2
+
+int adjustStage = 0;
+
+float getTargetMixTemp() {
+  if (isnan(ambientTemp) || isnan(mixTemp) || isnan(targetTempC)) {
+    return NAN;
+  }
+  if (lightsOn) {
+    //if the lights are on, mix temp should be below the target temp
+  } else {
+    //if the lights are off, mix temp should be targeted at target temp (future: smart determination)
+    return targetTempC;
+  }
+}
+
+void adjust() {
+  if (adjustStage == ADJUST_STAGE_NONE) {
+    if (!isnan(mixTemp) && !isnan(ambientTemp)) {
+      mixAmbientOffset = mixTemp - ambientTemp;
+    }
+    if (abs(ambientTemp - targetTempC) > ADJUST_THRESHOLD) {
+      //adjustment needed
+    } else {
+      //things is fine
+    }
+  } else if (adjustStage == ADJUST_STAGE_MIX) {
+
+  } else if (adjustStage == ADJUST_STAGE_AMBIENT) {
+
+  }
+}
 
 
 unsigned long lastTick = 0;
@@ -42,9 +93,10 @@ Servo outsideServo;
 #define MAX_SERVO 180
 
 void broadcastStatus() {
-  DucterStatusMsg msg(currentMode, targetSensorName, insidePct, outsidePct, targetTempC);
+  DucterStatusMsg msg(currentMode, insidePct, outsidePct, targetTempC);
   server.broadcast(msg);
 }
+
 void setServos() {
   int inVal = ((MAX_SERVO - MIN_SERVO) * (insidePct/100.0)) + MIN_SERVO;
   int outVal = ((MAX_SERVO - MIN_SERVO) * (outsidePct/100.0)) + MIN_SERVO;
@@ -65,7 +117,7 @@ bool update() {
   } else if (currentMode == DUCTER_MODE_AUTO) {
     bool isOk = false;
     //figure out logic to balance stuff
-    if (isnan(currentTemp)) {
+    if (isnan(ambientTemp)) {
       insidePct = 100;
       outsidePct = 0;
       dbg.printf("current temp is null!\n");
@@ -93,7 +145,7 @@ bool update() {
       //   *highVent = 0;
       //   *lowVent = 100;        
       // } else {
-      float diff = targetTempC - currentTemp;
+      float diff = targetTempC - ambientTemp;
       float absRange = (highTemp - lowTemp);
 
       float pct = diff/absRange;
@@ -130,8 +182,10 @@ bool update() {
 
 void tempMsg(MessageWrapper& mw) {
   TempSensorStatusMsg* msg = (TempSensorStatusMsg*)mw.message;
-  if (msg->nodeId().equals(targetSensorName)) {
-    currentTemp = msg->tempC();
+  if (msg->nodeId().equals(AMBIENT_SENSOR_NAME)) {
+    ambientTemp = msg->tempC();
+  } else if (msg->nodeId().equals(MIX_SENSOR_NAME)) {
+    mixTemp = msg->tempC();
   } else if (msg->nodeId().equals(IN_TEMP_SENSOR)) {
     inTemp = msg->tempC();
   } else if (msg->nodeId().equals(OUT_TEMP_SENSOR)) {
@@ -146,7 +200,7 @@ void setMsg(MessageWrapper& mw) {
   float inp = msg->insideOpenPercent();
   float outp = msg->outsideOpenPercent();
   float targetTemp = msg->targetTempC();
-  String sensorName = msg->targetSensorName();
+  // String sensorName = msg->targetSensorName();
   bool isOk = true;
   if (mode == DUCTER_MODE_MANUAL) {
     if (isnan(inp)) {
@@ -189,27 +243,32 @@ void setMsg(MessageWrapper& mw) {
     if (!isnan(targetTemp)) {
       targetTempC = targetTemp;
     }
-    if (!(sensorName.length() < 1 || sensorName.equals("null"))) {
-      //sensor name change, reconfigure stuff
-      targetSensorName = sensorName;
-      //checkSocketClient();
-      currentTemp = NAN;
-    }
+    // if (!(sensorName.length() < 1 || sensorName.equals("null"))) {
+    //   //sensor name change, reconfigure stuff
+    //   targetSensorName = sensorName;
+    //   //checkSocketClient();
+    //   currentTemp = NAN;
+    // }
     EEPROM.put<int>(12, currentMode);
     EEPROM.put<float>(16, targetTempC);
 
-    int len = targetSensorName.length();
-    EEPROM.put(32, len);
-    const char* str = targetSensorName.c_str();
-    for (int i = 0; i < len; i++) {
-      EEPROM.write(36 + i, str[i]);
-    }
+    // int len = targetSensorName.length();
+    // EEPROM.put(32, len);
+    // const char* str = targetSensorName.c_str();
+    // for (int i = 0; i < len; i++) {
+    //   EEPROM.write(36 + i, str[i]);
+    // }
     EEPROM.commit();
     repl.setSuccess();
   }
   update();
   repl.setSuccess();
   mw.reply(repl);
+}
+
+void switcherooMsg(MessageWrapper& mw) {
+  SwitcherooStatusMsg* msg = (SwitcherooStatusMsg*)mw.message;
+  lightsOn = msg->ports().portStatus[SWITCHEROO_LIGHTS_PORT];
 }
 
 void setup() {
@@ -226,29 +285,15 @@ void setup() {
   EEPROM.get<float>(4, outsidePct);
   EEPROM.get<int>(12, currentMode);
   EEPROM.get<float>(16, targetTempC);
-  int len = 0;
-  EEPROM.get(32, len);
-  if (len >= 0 && len < 200) {
-    char* str = (char*)malloc(len+1);
-    str[len] = '\0';
-    for (int i = 0; i < len; i++) {
-      str[i] = EEPROM.read(36 + i);
-    }
-    dbg.printf("read string len %d: %s\n", len, str);
-    targetSensorName = String(str);
-    free(str);
-  } else {
-    dbg.printf("target sensor name didn't read good!\n");
-    len = 0;
-    EEPROM.put(32, len);
-    targetSensorName = "";
-  }
-
+  
   setServos();
   server.onMessage(NAMEOF(DucterSetDuctsMsg), setMsg);
   server.onMessage(NAMEOF(TempSensorStatusMsg), tempMsg);
+  server.onMessage(NAMEOF(SwitcherooStatusMsg), switcherooMsg);
   server.init();
 }
+
+
 
 unsigned long lastAdjust = 0;
 void loop() {
@@ -266,7 +311,7 @@ void loop() {
   if (millis() - lastTick > 5000) {
     dbg.println("broadcast");
     broadcastStatus();
-    dbg.printf("mode: %d, intemp: %f, outtemp: %f, tartemp: %f, inpct:%f, outpct:%f, curtmp: %f, sens: %s\n", currentMode, inTemp, outTemp, targetTempC, insidePct, outsidePct, currentTemp, targetSensorName.c_str());
+    dbg.printf("mode: %d, intemp: %f, outtemp: %f, tartemp: %f, inpct:%f, outpct:%f, curtmp: %f, mixtemp: %f, lights: %d\n", currentMode, inTemp, outTemp, targetTempC, insidePct, outsidePct, ambientTemp, mixTemp, lightsOn);
     lastTick = millis();
   }
 
