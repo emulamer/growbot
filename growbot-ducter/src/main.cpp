@@ -38,16 +38,20 @@ unsigned long lastTick = 0;
 UdpMessengerServer server(45678);
 Servo insideServo;
 Servo outsideServo;
-#define MIN_SERVO 15
-#define MAX_SERVO 180
+#define MIN_SERVO1 15
+#define MAX_SERVO1 180
+
+#define MIN_SERVO2 0
+#define MAX_SERVO2 180
+
 
 void broadcastStatus() {
   DucterStatusMsg msg(currentMode, targetSensorName, insidePct, outsidePct, targetTempC);
   server.broadcast(msg);
 }
 void setServos() {
-  int inVal = ((MAX_SERVO - MIN_SERVO) * (insidePct/100.0)) + MIN_SERVO;
-  int outVal = ((MAX_SERVO - MIN_SERVO) * (outsidePct/100.0)) + MIN_SERVO;
+  int inVal = ((MAX_SERVO1 - MIN_SERVO1) * (insidePct/100.0)) + MIN_SERVO1;
+  int outVal = 180 - (((MAX_SERVO2 - MIN_SERVO2) * (outsidePct/100.0)) + MIN_SERVO2);
   dbg.printf("setting in servo: %d, out: %d\n", inVal, outVal);
   if (outVal > inVal) {
     outsideServo.write(outVal);
