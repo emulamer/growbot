@@ -13,30 +13,27 @@
 #include <Servo.h>
 #include <EEPROM.h>
 #include <DucterMsgs.h>
+#include <PID_v1.h>
 #define SWITCHEROO_LIGHTS_PORT 1 
 #define INSIDE_DUCT_PIN 3
 #define OUTSIDE_DUCT_PIN 1
 #define ADJUST_FREQ_MS 50000
 #define IN_TEMP_SENSOR "growbot-inside-intake-temp"
 #define OUT_TEMP_SENSOR "growbot-outside-intake-temp"
-
-#define MIX_STABILIZATION_TIME 60000
-#define AMBIENT_STABILIZATION_TIME 120000
-
-#define LIGHT_TEMP_MIX_DIFF 5.0
-
+#define ADJUST_THRESHOLD 0.1
 float inTemp = NAN;
 float outTemp = NAN;
 
-float mixAirOffset  
 
-#define ADJUST_THRESHOLD 0.15
 
-#define STABLIZE_THRESHOLD 0.1
+float Kp=1, Ki=0.05, Kd=0.25;
+
+double Input, Output, Setpoint;
+PID myPID(&Input, &Output, &Setpoint, Kp, Ki, Kd, DIRECT);
 
 #define AMBIENT_SENSOR_NAME "ambient-temp"
 #define MIX_SENSOR_NAME "growbot-mix-intake-temp"
-///String targetSensorName = "";
+
 float insidePct = 100;
 float outsidePct = 0;
 float targetTempC = 20;
@@ -54,34 +51,7 @@ float mixAmbientOffset = 0;
 
 int adjustStage = 0;
 
-float getTargetMixTemp() {
-  if (isnan(ambientTemp) || isnan(mixTemp) || isnan(targetTempC)) {
-    return NAN;
-  }
-  if (lightsOn) {
-    //if the lights are on, mix temp should be below the target temp
-  } else {
-    //if the lights are off, mix temp should be targeted at target temp (future: smart determination)
-    return targetTempC;
-  }
-}
 
-void adjust() {
-  if (adjustStage == ADJUST_STAGE_NONE) {
-    if (!isnan(mixTemp) && !isnan(ambientTemp)) {
-      mixAmbientOffset = mixTemp - ambientTemp;
-    }
-    if (abs(ambientTemp - targetTempC) > ADJUST_THRESHOLD) {
-      //adjustment needed
-    } else {
-      //things is fine
-    }
-  } else if (adjustStage == ADJUST_STAGE_MIX) {
-
-  } else if (adjustStage == ADJUST_STAGE_AMBIENT) {
-
-  }
-}
 
 
 unsigned long lastTick = 0;
@@ -97,7 +67,7 @@ Servo outsideServo;
 
 
 void broadcastStatus() {
-  DucterStatusMsg msg(currentMode, insidePct, outsidePct, targetTempC);
+  DucterStatusMsg msg(currentMode, insidePct, outsidePct, targetTempC, Ki, Kp, Kd);
   server.broadcast(msg);
 }
 
@@ -204,6 +174,10 @@ void setMsg(MessageWrapper& mw) {
   float inp = msg->insideOpenPercent();
   float outp = msg->outsideOpenPercent();
   float targetTemp = msg->targetTempC();
+  float ki = msg->ki();
+  float kp = msg->kp();
+  float kd = msg->kd();
+
   // String sensorName = msg->targetSensorName();
   bool isOk = true;
   if (mode == DUCTER_MODE_MANUAL) {
@@ -233,8 +207,25 @@ void setMsg(MessageWrapper& mw) {
     repl.setUnsuccess("invalid mode");
     isOk = false;
   }
+  
 
   if (isOk) {
+    bool tune = false;
+    if (!isnan(ki)) {
+      Ki = ki;
+      tune = true;
+    }
+    if (!isnan(kp)) {
+      Kp = kp;
+      tune = true;
+    }
+    if (!isnan(kd)) {
+      Kd = kd;
+      tune = true;
+    }
+    if (tune) {
+      myPID.SetTunings(Kp, Ki, Kd);
+    }
     currentMode = mode;
 
     if (currentMode == DUCTER_MODE_MANUAL)
@@ -255,6 +246,9 @@ void setMsg(MessageWrapper& mw) {
     // }
     EEPROM.put<int>(12, currentMode);
     EEPROM.put<float>(16, targetTempC);
+    EEPROM.put<float>(20, Ki);
+    EEPROM.put<float>(24, Kp);
+    EEPROM.put<float>(28, Kd);
 
     // int len = targetSensorName.length();
     // EEPROM.put(32, len);
@@ -289,12 +283,21 @@ void setup() {
   EEPROM.get<float>(4, outsidePct);
   EEPROM.get<int>(12, currentMode);
   EEPROM.get<float>(16, targetTempC);
-  
+  EEPROM.get<float>(20, Ki);
+  EEPROM.get<float>(24, Kp);
+  EEPROM.get<float>(28, Kd);
+  myPID.SetTunings(Kp, Ki, Kd);
+  myPID.SetOutputLimits(0, 100);
+  myPID.SetMode(AUTOMATIC);
+  myPID.SetSampleTime(8000);
   setServos();
   server.onMessage(NAMEOF(DucterSetDuctsMsg), setMsg);
   server.onMessage(NAMEOF(TempSensorStatusMsg), tempMsg);
   server.onMessage(NAMEOF(SwitcherooStatusMsg), switcherooMsg);
   server.init();
+  Input = 0;
+  Output = 0;
+  Setpoint = 0;
 }
 
 
@@ -303,19 +306,55 @@ unsigned long lastAdjust = 0;
 void loop() {
   ezEspLoop();
   server.handle();
-  if (millis() - lastAdjust > ADJUST_FREQ_MS) {
-    dbg.println("adjusting");
-    if (update()) {
-      lastAdjust = millis();
-    } else {
-      //update 4x quicker if it fails
-      lastAdjust = millis() - (ADJUST_FREQ_MS * 0.75);
+  Input = ambientTemp;
+  Setpoint = targetTempC;
+  if (currentMode == DUCTER_MODE_AUTO) {
+    if (!isnan(inTemp) && !isnan(outTemp)) {
+      float newKp = abs((targetTempC - inTemp)/ (targetTempC - outTemp) ) * 100;
+      if (outTemp > inTemp && myPID.GetDirection() != REVERSE) {
+        myPID.SetControllerDirection(REVERSE);
+      } else if (myPID.GetDirection() != DIRECT) {
+        myPID.SetControllerDirection(DIRECT);
+      }
+      if (abs(newKp - Kp) > 1) {
+        Kp = newKp;
+        myPID.SetTunings(Kp, Ki, Kd);
+      }
     }
+    if (!isnan(Input) && !isnan(Setpoint)) {
+      
+      if (myPID.Compute()) {
+        insidePct = Output;
+        outsidePct = 100 - Output;
+        setServos();
+      }
+    }
+  } else if (currentMode == DUCTER_MODE_MANUAL) {
+    setServos();
   }
+  // if (millis() - lastAdjust > ADJUST_FREQ_MS) {
+  //   dbg.println("adjusting");
+
+  //   lastAdjust = millis();
+  //   // if (update()) {
+  //   //lastAdjust = millis();
+  //   // } else {
+  //   //   //update 4x quicker if it fails
+  //   //   lastAdjust = millis() - (ADJUST_FREQ_MS * 0.75);
+  //   // }
+  // }
+
   if (millis() - lastTick > 5000) {
+    // if (currentMode == DUCTER_MODE_MANUAL) {
+    //   setServos();
+    // } else if (currentMode == DUCTER_MODE_AUTO) {
+
+    // } 
+    //bool isOk = false;
     dbg.println("broadcast");
     broadcastStatus();
     dbg.printf("mode: %d, intemp: %f, outtemp: %f, tartemp: %f, inpct:%f, outpct:%f, curtmp: %f, mixtemp: %f, lights: %d\n", currentMode, inTemp, outTemp, targetTempC, insidePct, outsidePct, ambientTemp, mixTemp, lightsOn);
+    dbg.printf("i: %lf, s: %lf, o: %lf, kp: %lf, ki: %lf, kd: %lf\n", Input, Setpoint, Output, Kp, Ki, Kd);
     lastTick = millis();
   }
 

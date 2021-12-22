@@ -26,7 +26,7 @@
 #define I2C2OBJ this->wire2
 #define MAKELUX(NAME, MXPORT) new SensorHolder(\
                 new Max44009Sensor(I2C2OBJ, i2cMultiplexer, MXPORT),\
-                { new ReadingNormalizer(#NAME, 10, 3, .5f, 0, 100000) },\
+                { new ReadingNormalizer(#NAME, 10, 3, -1, 0, 100000) },\
                 #NAME,\
                 1,\
                 { &this->data->NAME },\

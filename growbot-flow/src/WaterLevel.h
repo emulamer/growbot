@@ -7,7 +7,7 @@
 #define WATERLEVEL_ROLLING_AVG_COUNT 10
 
 #define WATERLEVEL_REF_RESIST_BASE 1750
-#define WATERLEVEL_VAL_RESIST_EMPTY 1790
+#define WATERLEVEL_VAL_RESIST_EMPTY 1770
 #define WATERLEVEL_VAL_RESIST_FULL 700
 
 class WaterLevel {
@@ -41,7 +41,7 @@ class WaterLevel {
             float adjOhms = WATERLEVEL_REF_RESIST_BASE/refOhms;
             float adjustedValOhms = valOhms * adjOhms;
             float percent = (1.0 - (((adjustedValOhms - WATERLEVEL_VAL_RESIST_FULL) / (float)(WATERLEVEL_VAL_RESIST_EMPTY - WATERLEVEL_VAL_RESIST_FULL)))) * 100.0;
-            //dbg.printf("Ref: %f, Val: %f, refadj: %f, adjval: %f, percent: %f\n", refOhms, valOhms, adjOhms, adjustedValOhms, percent);
+            dbg.printf("Ref: %f, Val: %f, refadj: %f, adjval: %f, percent: %f\n", refOhms, valOhms, adjOhms, adjustedValOhms, percent);
             return percent;
         }
 

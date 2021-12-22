@@ -26,6 +26,9 @@ class ReadingNormalizer {
             return true;
         }
         bool deviates(float reading) {
+            if (this->maxDeviance < 0) {
+                return false;
+            }
             if (this->sampleCount > 1) {
                 float avg = this->getAvgReading();
                 float diff = abs(reading - avg);

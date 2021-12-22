@@ -13,12 +13,22 @@
 #include <SwitcherooMsgs.h>
 #include <EEPROM.h>
 #include <LuxSensorMsgs.h>
+#include <PID_v1.h>
 
 #define LEDPWM_PIN 14
 #define SWITCHEROO_LIGHTS_PORT 1 
 #define LUX_MIN_RESOLUTION 1000
 #define MAX_LUX 50000
+
 #define ADJ_FREQ_MS 15000
+
+#define MIN_PWM 0
+#define MAX_PWM 880
+float Kp=.003, Ki=.1, Kd=.5;
+
+double Input, Output, Setpoint;
+//Specify the links and initial tuning parameters
+PID myPID(&Input, &Output, &Setpoint, Kp, Ki, Kd, DIRECT);
 
 unsigned long lastAdjust = 0;
 unsigned long lastTick = 0;
@@ -29,25 +39,44 @@ float currentLightPercent = NAN;
 float currentSensorLux = NAN;
 bool isOn = false;
 String targetSensorName = "";
-
+int lastPwm = 0;
+unsigned long lastSensorUpdateCalc;
+unsigned long lastSensorUpdate;
 void setLight() {
 
-  if (currentMode == LIGHTIFY_MODE_AUTO && isOn && (millis() - lastAdjust > ADJ_FREQ_MS)) {
+  if (currentMode == LIGHTIFY_MODE_AUTO && isOn ) {
     if (isnan(currentSensorLux) || isnan(targetLux)) {
         //something is missing, make no change
     } else {
-      float diff = targetLux - currentSensorLux;
-      //assume we're not getting better than +/- 1000 lux probably/
-      if (abs(diff) > LUX_MIN_RESOLUTION) {
-        float diffpct = (diff/MAX_LUX)*0.8;
-        if (abs(diffpct) > 0.001) {
-          if (isnan(currentLightPercent)) {
-            currentLightPercent = 0;
-          }
-          currentLightPercent += diffpct*100;
-          lastAdjust = millis();
+      if (lastSensorUpdate != lastSensorUpdateCalc) {
+        lastSensorUpdateCalc = lastSensorUpdate;
+        Input = currentSensorLux/1000.0;
+        Setpoint = targetLux/1000.0;
+        if (myPID.Compute()) {
+          dbg.printf("calced\n");
+        } else {
+          dbg.printf("no calced\n");
         }
+        if (Output < 1) {
+          currentLightPercent = 1;
+        } else {
+          currentLightPercent = Output;
+        }
+        lastAdjust = millis();
+        
       }
+      // float diff = targetLux - currentSensorLux;
+      // //assume we're not getting better than +/- 1000 lux probably/
+      // if (abs(diff) > LUX_MIN_RESOLUTION) {
+      //   float diffpct = (diff/MAX_LUX)*0.8;
+      //   if (abs(diffpct) > 0.001) {
+      //     if (isnan(currentLightPercent)) {
+      //       currentLightPercent = 0;
+      //     }
+      //     currentLightPercent += diffpct*100;
+          
+      //   }
+      // }
     }
   }
 
@@ -57,7 +86,16 @@ void setLight() {
     } else if (currentLightPercent > 100) {
       currentLightPercent = 100;
     }
-    ledcWrite(0, (int)((currentLightPercent/100.0) * 1023.0));
+    //inverted, more is less!
+    int pwmVal = 0;
+    if (currentLightPercent == 0) {
+      //make sure off is as far off as it goes
+      pwmVal = 1023;
+    } else {
+      pwmVal = MAX_PWM -  (MIN_PWM  + ((MAX_PWM - MIN_PWM) * (currentLightPercent/100.0)));
+    }
+  lastPwm = pwmVal;
+    ledcWrite(0, (int)(pwmVal));
   }
 }
 
@@ -73,11 +111,13 @@ void sensorMsg(MessageWrapper& mw) {
     return;
   }
   currentSensorLux = msg->lux();
+  lastSensorUpdate = millis();
 }
 
 void switcherooMsg(MessageWrapper& mw) {
   SwitcherooStatusMsg* msg = (SwitcherooStatusMsg*)mw.message;
   isOn = msg->ports().portStatus[SWITCHEROO_LIGHTS_PORT];
+  dbg.printf("got switcheroo msg, port is %d\n", isOn);
 }
 
 void setMsg(MessageWrapper& mw) {
@@ -146,7 +186,9 @@ void setMsg(MessageWrapper& mw) {
 
 void setup() {
   EEPROM.begin(512);
-
+  myPID.SetOutputLimits(1.0, 100.0);
+  myPID.SetMode(AUTOMATIC);
+  myPID.SetSampleTime(10000);
   pinMode(LEDPWM_PIN, OUTPUT);  
   digitalWrite(LEDPWM_PIN, LOW);
   ledcSetup(0, 1500, 10);
@@ -180,13 +222,15 @@ void setup() {
   server.init();
 }
 
+
+
 void loop() {
   ezEspLoop();
   server.handle();
   setLight();
   if (millis() - lastTick > 5000) {  
     dbg.printf("device %s, free heap: %d\n", MDNS_NAME, ESP.getFreeHeap());
-    dbg.printf("lightsOn: %d, target sensor: %s, sensorval: %f, currentLightPercent: %f, mode: %d, target: %f\n", isOn, targetSensorName.c_str(), currentSensorLux, currentLightPercent, currentMode, targetLux);
+    dbg.printf("pwm: %d, lightsOn: %d, target sensor: %s, sensorval: %f, currentLightPercent: %f, mode: %d, target: %f\n", lastPwm, isOn, targetSensorName.c_str(), currentSensorLux, currentLightPercent, currentMode, targetLux);
     
     broadcastStatus();
     lastTick = millis();
