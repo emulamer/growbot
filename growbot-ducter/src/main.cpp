@@ -68,13 +68,14 @@ Servo outsideServo;
 
 void broadcastStatus() {
   DucterStatusMsg msg(currentMode, insidePct, outsidePct, targetTempC, Ki, Kp, Kd);
+  dbg.println("broadcasting status");
   server.broadcast(msg);
 }
 
 void setServos() {
   int inVal = ((MAX_SERVO1 - MIN_SERVO1) * (insidePct/100.0)) + MIN_SERVO1;
   int outVal = 180 - (((MAX_SERVO2 - MIN_SERVO2) * (outsidePct/100.0)) + MIN_SERVO2);
-  dbg.printf("setting in servo: %d, out: %d\n", inVal, outVal);
+  //dbg.printf("setting in servo: %d, out: %d\n", inVal, outVal);
   if (outVal > inVal) {
     outsideServo.write(outVal);
     insideServo.write(inVal);

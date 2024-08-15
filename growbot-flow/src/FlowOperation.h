@@ -11,6 +11,7 @@ struct FlowOpType {
      static const String Flush;
      static const String FlushAndFillToPercent;
      static const String Wait;
+     static const String ManualOverride;
 };
 const String FlowOpType::FillToPercentOnce = "FillToPercentOnce";
 const String FlowOpType::FillToPercent = "FillToPercent";
@@ -19,6 +20,7 @@ const String FlowOpType::Empty = "Empty";
 const String FlowOpType::Flush = "Flush";
 const String FlowOpType::FlushAndFillToPercent = "FlushAndFillToPercent";
 const String FlowOpType::Wait  = "Wait";
+const String FlowOpType::ManualOverride  = "ManualOverride";
 class FlowOp {
     protected:
         String errorMessage;
@@ -88,6 +90,61 @@ class WaitOp : public FlowOp {
             }
         }
         void abort() {
+            aborted = true;
+        }
+        
+};
+
+
+class ManualOverrideOp : public FlowOp {
+    private:
+        bool inValveOpen = false;
+        bool outValveOpen = false;
+        bool overrideWaterLevel = false;
+        float fakeWaterLevel = 0;
+        FlowValve* inValve;
+        FlowValve* outValve;
+        WaterLevel* level;
+    public:
+        String getType() { return FlowOpType::ManualOverride; }
+        ManualOverrideOp(WaterLevel* waterLevel, FlowValve* inValve, FlowValve* outValve, bool inValveOpen, bool outValveOpen, bool overrideWaterLevel, float fakeWaterLevel) {
+            this->inValve = inValve;
+            this->outValve = outValve;
+            this->level = waterLevel;
+            this->inValveOpen = inValveOpen;
+            this->outValveOpen = outValveOpen;
+            this->overrideWaterLevel = overrideWaterLevel;
+            this->fakeWaterLevel = fakeWaterLevel;
+            params.push_back(inValveOpen);
+            params.push_back(outValveOpen);
+            params.push_back(overrideWaterLevel);
+            params.push_back(fakeWaterLevel);
+        }
+        void start() {
+            dbg.printf("Starting ManualOverrideOp inValveOpen: %d, outValveOpen: %d, overrideWaterLevel: %d, fakeWaterLevel: %f\n", inValveOpen, outValveOpen, overrideWaterLevel, fakeWaterLevel);
+            if (inValveOpen) {
+                inValve->setOpen(true);
+            } else {
+                inValve->setOpen(false);
+            }
+            if (outValveOpen) {
+                outValve->setOpen(true);
+            } else {
+                outValve->setOpen(false);
+            }
+            if (overrideWaterLevel) {
+                level->setFakeValue(fakeWaterLevel);
+            } else {
+                level->clearFakeValue();
+            }
+        }
+        void handle() {
+            //this one is never done, i'll maintain the state till the op is stopped
+        }
+        void abort() {
+            level->clearFakeValue();
+            outValve->setOpen(false);
+            inValve->setOpen(false);
             aborted = true;
         }
         

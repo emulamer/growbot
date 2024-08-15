@@ -1,0 +1,20 @@
+{
+    "name": "udp-json-client",
+    "version": "1.0.0",
+    "description": "A Node.js TypeScript example for sending and receiving JSON messages over UDP",
+    "main": "dist/index.js",
+    "scripts": {
+        "build": "tsc",
+        "start": "node dist/index.js",
+        "tsstart": "ts-node src/index.ts"
+    },
+    "dependencies": {
+        "dgram": "^1.0.1"
+    },
+    "devDependencies": {
+        "@types/node": "^20.14.15",
+        "typescript": "^5.5.4"
+    },
+    "author": "",
+    "license": "MIT"
+}

@@ -3,6 +3,7 @@
 #include <GbMsg.h>
 //#include <WebSocketsServer.h>
 #include <MessageParser.h>
+#include <WiFiUdp.h>
 
 
 
@@ -34,7 +35,7 @@ class _MessengerHandlerRef {
     MessageWrapper wrapMessage(MessengerServerCore* server, GbMsg* msg, IPAddress num) {
         MessageWrapper wrap;
         wrap.message = msg;
-        wrap.num = num;
+        wrap.num = (uint32_t)num;
         wrap.srv = server;
         return wrap;
     }
@@ -72,8 +73,8 @@ class MessengerServerCore {
         std::vector<_ReplyHandlerRef*> replyHandlers;
         void handleMessage(char* payload, int length, unsigned long num) {
             GbMsg* msg = parseGbMsg((char*)payload, length);
-            if (msg == NULL) {
-                dbg.printf("parsing failed, msg: %s\n", payload);
+            if (!msg) {
+                dbg.printf("parsing msg failed\n");
                 return;
             }
             if (msg->msgType().equals(NAMEOF(GbResultMsg))) {
@@ -192,9 +193,11 @@ class UdpMessengerServer : public MessengerServerCore {
         int port;
         unsigned char buffer[MAX_PAYLOAD_SIZE];
     public:
+        int getPort() {
+            return port;
+        }
         UdpMessengerServer(int port) : MessengerServerCore() {
             this->port = port;
-            
         }
         void init() {
             udp.begin(port);
@@ -244,7 +247,7 @@ class UdpMessengerServer : public MessengerServerCore {
                 dbg.printf("Tried to read %d but actually read %d!\n", pktLen, read);
                 return;
             }
-            handleMessage((char*)buffer, read, udp.remoteIP());            
+            handleMessage((char*)buffer, read, (uint32_t)udp.remoteIP());            
         }
 };
 

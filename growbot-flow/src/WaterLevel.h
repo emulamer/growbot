@@ -21,6 +21,8 @@ class WaterLevel {
         ESP32AnalogRead adcRef;
         ESP32AnalogRead adcVal;
         int sampleIntervalMS;
+        bool forceFakeValue = false;
+        float fakeValue = 0;
         float readWaterLevel(int sampleCount = WATERLEVEL_READ_COUNT) {
             float refRead = 0;
             float valRead = 0;
@@ -51,6 +53,17 @@ class WaterLevel {
             adcVal.attach(valPin);
             this->sampleIntervalMS = sampleIntervalMS;
         }
+        bool isFake() {
+            return forceFakeValue;
+        }
+
+        void setFakeValue(float value) {
+            forceFakeValue = true;
+            fakeValue = value;
+        }
+        void clearFakeValue() {
+            forceFakeValue = false;
+        }
 
         void update() {
             if (millis() - lastSampleStamp > sampleIntervalMS) {
@@ -66,6 +79,10 @@ class WaterLevel {
         }
 
         float getImmediateLevel() {
+            if (forceFakeValue) {
+                dbg.println("WARNING: using fake value for water level!");
+                return fakeValue;
+            }
             float sum = readWaterLevel();
             delay(50);
             sum += readWaterLevel();
@@ -73,6 +90,10 @@ class WaterLevel {
         }
 
         float getWaterLevel() {
+            if (forceFakeValue) {
+                dbg.println("WARNING: using fake value for water level!");
+                return fakeValue;
+            }
             if (currentAverageValid) {
                 return currentAverage;
             }

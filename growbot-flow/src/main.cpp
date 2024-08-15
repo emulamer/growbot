@@ -29,15 +29,25 @@
 
 #define LOOP_ON_PIN 25
 #define LOOP_OFF_PIN 26
+#define IN_FLOW_PIN 5
+#define OUT_FLOW_PIN 21
+#define WATER_LEVEL_REF_PIN 35
+#define WATER_LEVEL_VAL_PIN 34
+#define DRAIN_VALVE_PIN 27
+#define IN_VALVE_PIN 33
 
-WaterLevel waterLevel(35, 34, 500);
-FlowMeter inFlowMeter(5, 1380);//1136);
-FlowMeter outFlowMeter(21, 460); 
 
-ToggleValve* loopValve = new ToggleValve(25, 26);
-FlowValve* drainValve = new SolenoidValve(27, 300, 15);
+bool forceFakeWaterLevel = false;
+float fakeWaterLevel = 20.0;
 
-FlowValve* inValve = new SolenoidValve(33, 300, 15);
+WaterLevel waterLevel(WATER_LEVEL_REF_PIN, WATER_LEVEL_VAL_PIN, 500);
+FlowMeter inFlowMeter(IN_FLOW_PIN, 1175);//1132-1245 probably
+FlowMeter outFlowMeter(OUT_FLOW_PIN, 390); //380-400 probably
+
+ToggleValve* loopValve = new ToggleValve(LOOP_ON_PIN, LOOP_OFF_PIN);
+FlowValve* drainValve = new SolenoidValve(DRAIN_VALVE_PIN, 300, 15);
+
+FlowValve* inValve = new SolenoidValve(IN_VALVE_PIN, 300, 15);
 FlowValve* outValve = new ComplexValve(drainValve, loopValve, true);
 // FlowValve valve26(26, 5000, 255);
 // FlowValve valve14(14, 5000, 255);
@@ -163,6 +173,17 @@ void onStartOpMsg(MessageWrapper& mw) {
           startOp(new FlushAndFillToPercentOp(&waterLevel, inValve, outValve, &inFlowMeter, &outFlowMeter, smsg->param(0),paramCtr>1?smsg->param(1):1, paramCtr>2?smsg->param(2):15, paramCtr>3?(int)smsg->param(3):300));
           res.setSuccess();
         }
+      } else if (op.equals(FlowOpType::ManualOverride)) {
+        //bool inValveOpen, bool outValveOpen, bool overrideWaterLevel, float fakeWaterLevel
+        if (paramCtr < 4) {
+          dbg.printf("didn't get enough parameters for ManualOverride op\n");
+          res.setUnsuccess("ManualOverride requires the in and out valve states, overrideWaterLevel, and fake water level");
+        } else {
+          //(WaterLevel* waterLevel, FlowValve* inValve, FlowValve* outValve, bool inValveOpen, bool outValveOpen, bool overrideWaterLevel, float fakeWaterLevel) {
+          dbg.printf("starting manual override op\n");
+          startOp(new ManualOverrideOp(&waterLevel, inValve, outValve, smsg->param(0),smsg->param(1), smsg->param(2), paramCtr>3?(float)smsg->param(3):0));
+          res.setSuccess();
+        }
       } else {
         dbg.printf("Got unknown op to start: %s\n", smsg->op().c_str());
         res.setUnsuccess("Unknown op");
@@ -206,15 +227,19 @@ void onResetCounterMsg(MessageWrapper& mw) {
 }
 
 void setup() {
-  pinMode(LOOP_ON_PIN, OUTPUT);
-  pinMode(LOOP_OFF_PIN, OUTPUT);
-  digitalWrite(LOOP_ON_PIN, HIGH);
-  digitalWrite(LOOP_OFF_PIN, LOW);
+  // pinMode(LOOP_ON_PIN, OUTPUT);
+  // pinMode(LOOP_OFF_PIN, OUTPUT);
+  // digitalWrite(LOOP_ON_PIN, HIGH);
+  // digitalWrite(LOOP_OFF_PIN, LOW);
   flowParts.inFlowMeter = &inFlowMeter;
   flowParts.outFlowMeter = &outFlowMeter;
   flowParts.inValve = inValve;
   flowParts.outValve = outValve;
   flowParts.waterLevel = &waterLevel;
+  inFlowMeter.init();
+  outFlowMeter.init();
+  // inValve->init();
+  // outValve->init();
   Serial.begin(115200);
   inValve->setOpen(false);
   outValve->setOpen(false);

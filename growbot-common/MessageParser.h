@@ -7,13 +7,14 @@
 #include "GbMsg.h"
 #include "LuxSensorMsgs.h"
 #include "LightifyMsgs.h"
+#include "DoserMsgs.h"
 
 #pragma once
 GbMsg* parseGbMsg(char* payload, int length) {
   StaticJsonDocument<MSG_JSON_SIZE> doc;
   auto err = deserializeJson(doc, payload, length);
   if (err) {
-    dbg.printf("Error deserializing gb message: %s, data is %s\n", err.c_str(), (char*) payload);
+   // dbg.printf("Error deserializing gb message: %s, data is %s\n", err.c_str(), (char*) payload);
     return NULL;
   }
   String msgType = doc["msgType"].as<String>();
@@ -54,12 +55,18 @@ GbMsg* parseGbMsg(char* payload, int length) {
       return new LightifySetMsg(doc);
     } else if (msgType.equals(NAMEOF(LightifyStatusMsg))) { 
       return new LightifyStatusMsg(doc);
+    } else if (msgType.equals(NAMEOF(DoserDosePortMsg))) { 
+      return new DoserDosePortMsg(doc);
+    } else if (msgType.equals(NAMEOF(DoserEStopMsg))) { 
+      return new DoserEStopMsg(doc);
+    } else if (msgType.equals(NAMEOF(DoserStartContinuousPortMsg))) { 
+      return new DoserStartContinuousPortMsg(doc);
     } else {
-        dbg.printf("Unknown message: %s\n", msgType.c_str());
+       // dbg.printf("Unknown message: %s\n", msgType.c_str());
         return NULL;
     }
   } else {
-      dbg.println("Message missing msgType");
+      //dbg.println("Message missing msgType");
       return NULL;
   }
 }

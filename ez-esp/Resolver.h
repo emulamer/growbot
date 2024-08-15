@@ -1,5 +1,7 @@
 #include <Arduino.h>
+#include <vector>
 #include "DebugUtils.h"
+
 #ifdef ARDUINO_ARCH_ESP8266
 #define MDNS_ATTEMPTS 3
 #include <ESP8266mDNS.h>
@@ -9,6 +11,7 @@
 #elif defined(ARDUINO_ARCH_ESP32)
 #include <ESPmDNS.h>
 #include <ESP32Ping.h>
+#include <lwip/sockets.h>
 #endif
 #include "lwip/dns.h"
 

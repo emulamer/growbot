@@ -27,6 +27,7 @@ class FlowResetCounterMsg: public GbMsg {
             return (*this)["counterName"].as<String>();
         }
 };
+
 class FlowStartOpMsg : public GbMsg {
     public:
         String myType() { return NAMEOF(FlowStartOpMsg); }

@@ -15,6 +15,9 @@ class FlowMeter {
             this->ppl = pulsesPerLiter;
 
             //((float)ticks/(float)60) * 0.264172F
+            
+        }
+        void init() {
             attachInterruptArg(this->pin, FlowMeter::pulseCounter, this, FALLING);
         }
         float getLitersSinceReset() {

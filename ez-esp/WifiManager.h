@@ -68,9 +68,19 @@ class WifiManager {
             onip = WiFi.onStationModeGotIP(std::bind(&WifiManager::onWifiGotIP, this, std::placeholders::_1));
             ondisconnect = WiFi.onStationModeDisconnected(std::bind(&WifiManager::onWifiDisconnect, this, std::placeholders::_1));
 #elif defined(ARDUINO_ARCH_ESP32)
-            WiFi.onEvent(std::bind(&WifiManager::onWifiGotIP, this, std::placeholders::_1), SYSTEM_EVENT_STA_GOT_IP);  
-            WiFi.onEvent(std::bind(&WifiManager::onWifiDisconnect, this, std::placeholders::_1), SYSTEM_EVENT_STA_DISCONNECTED);
-            WiFi.onEvent(std::bind(&WifiManager::onWifiConnect, this, std::placeholders::_1, std::placeholders::_2), SYSTEM_EVENT_STA_CONNECTED);
+            //apparently some platform stuff changed
+            // WiFi.onEvent(std::bind(&WifiManager::onWifiGotIP, this, std::placeholders::_1), SYSTEM_EVENT_STA_GOT_IP);  
+            // WiFi.onEvent(std::bind(&WifiManager::onWifiDisconnect, this, std::placeholders::_1), SYSTEM_EVENT_STA_DISCONNECTED);
+            // WiFi.onEvent(std::bind(&WifiManager::onWifiConnect, this, std::placeholders::_1, std::placeholders::_2), SYSTEM_EVENT_STA_CONNECTED);
+            WiFi.onEvent([this](WiFiEvent_t event, WiFiEventInfo_t info){
+                    this->onWifiGotIP(event);
+                },arduino_event_id_t::ARDUINO_EVENT_WIFI_STA_GOT_IP);  
+            WiFi.onEvent([this](WiFiEvent_t event, WiFiEventInfo_t info){
+                    this->onWifiDisconnect(event);                
+                },arduino_event_id_t::ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
+            WiFi.onEvent([this](WiFiEvent_t event, WiFiEventInfo_t info){
+                    this->onWifiConnect(event, info);                      
+                },arduino_event_id_t::ARDUINO_EVENT_WIFI_STA_CONNECTED);
 #endif
         }
         void init(const char* hostname, const char* defaultSSID, const char* defaultPassword) {

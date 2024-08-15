@@ -36,6 +36,14 @@ if (process.argv.length > 2 && +process.argv[2] == process.argv[2]) {
 }
 else if (process.argv.length > 2 && process.argv[2] == "doser") {
   server.bind(44445);  
+}
+  else if (process.argv.length > 2 && process.argv[2] == "flow") {
+    server.bind(44446);  
+  }
+    else if (process.argv.length > 2 && process.argv[2] == "ducter") {
+      server.bind(44450);  
+    } else if (process.argv.length > 2 && Number.isInteger(process.argv[2])) {
+      server.bind(parseInt(process.argv[2]));  
 } else {
   server.bind(44444);
 }
