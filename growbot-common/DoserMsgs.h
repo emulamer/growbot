@@ -42,10 +42,9 @@ class DoserContinuousEndedMsg : public GbMsg {
     public:
     String myType() {return NAMEOF(DoserContinuousEndedMsg);}
     DoserContinuousEndedMsg(StaticJsonDocument<MSG_JSON_SIZE> ref) : GbMsg(ref) {};
-    DoserContinuousEndedMsg(int port, float actualMl, bool isRetracted) : GbMsg(NAMEOF(DoserContinuousEndedMsg)) {
+    DoserContinuousEndedMsg(int port, float actualMl) : GbMsg(NAMEOF(DoserContinuousEndedMsg)) {
         (*this)["port"] = port;
         (*this)["actualMl"] = actualMl;
-        (*this)["isRetracted"] = isRetracted;
     }
 
     int port() {
@@ -58,13 +57,56 @@ class DoserContinuousEndedMsg : public GbMsg {
             return (*this)["actualMl"].as<float>();
         }
     }
+};
 
-    bool isRetracted() {
-        if ((*this)["isRetracted"].isNull()) {
+
+class DoserCalibrateEndedMsg : public GbMsg {
+    public:
+    String myType() {return NAMEOF(DoserCalibrateEndedMsg);}
+    DoserCalibrateEndedMsg(StaticJsonDocument<MSG_JSON_SIZE> ref) : GbMsg(ref) {};
+    DoserCalibrateEndedMsg(int port, bool success,  long bottle2SensorSteps, long sensor2DoseSteps, int errorCode, String errorMessage) : GbMsg(NAMEOF(DoserCalibrateEndedMsg)) {
+        (*this)["port"] = port;
+        (*this)["success"] = success;
+        (*this)["bottle2SensorSteps"] = bottle2SensorSteps;
+        (*this)["sensor2DoseSteps"] = sensor2DoseSteps;
+        (*this)["errorCode"] = errorCode;
+        (*this)["errorMessage"] = errorMessage;
+    }
+
+    int port() {
+        return (*this)["port"].as<int>();
+    }
+    bool success() {
+        if ((*this)["success"].isNull()) {
             return false;
         }
-        return (*this)["isRetracted"].as<bool>();
+        return (*this)["success"].as<bool>();
     }
+    long bottle2SensorSteps() {
+        if ((*this)["bottle2SensorSteps"].isNull()) {
+            return -1;
+        }
+        return (*this)["bottle2SensorSteps"].as<long>();
+    }
+    long sensor2DoseSteps() {
+        if ((*this)["sensor2DoseSteps"].isNull()) {
+            return -1;
+        }
+        return (*this)["sensor2DoseSteps"].as<long>();
+    }
+    int errorCode() {
+        if ((*this)["errorCode"].isNull()) {
+            return -1;
+        }
+        return (*this)["errorCode"].as<int>();
+    }
+    String errorMessage() {
+        if ((*this)["errorMessage"].isNull()) {
+            return "";
+        }
+        return (*this)["errorMessage"].as<String>();
+    }
+    
 };
 
 //not really much in this one right now, just adding a status message so it can say it's awake
@@ -87,11 +129,10 @@ class DoserEndedMsg : public GbMsg {
     public:
     String myType() {return NAMEOF(DoserEndedMsg);}
     DoserEndedMsg(StaticJsonDocument<MSG_JSON_SIZE> ref) : GbMsg(ref) {};
-    DoserEndedMsg(int port, float actualMl, bool success, bool isRetracted) : GbMsg(NAMEOF(DoserEndedMsg)) {
+    DoserEndedMsg(int port, float actualMl, bool success) : GbMsg(NAMEOF(DoserEndedMsg)) {
         (*this)["port"] = port;
         (*this)["actualMl"] = actualMl;
         (*this)["success"] = success;
-        (*this)["isRetracted"] = isRetracted;
     }
 
     int port() {
@@ -111,29 +152,31 @@ class DoserEndedMsg : public GbMsg {
         }
         return (*this)["success"].as<bool>();
     }
-
-    bool isRetracted() {
-        if ((*this)["isRetracted"].isNull()) {
-            return false;
-        }
-        return (*this)["isRetracted"].as<bool>();
-    }
-
 };
 
 class DoserEStopMsg : public GbMsg {
     public:
     String myType() {return NAMEOF(DoserEStopMsg);}
     DoserEStopMsg(StaticJsonDocument<MSG_JSON_SIZE> ref) : GbMsg(ref) {};
-    DoserEStopMsg(bool skipRetract) : GbMsg(NAMEOF(DoserEStopMsg)) {
-        (*this)["skipRetract"] = skipRetract;
+    DoserEStopMsg() : GbMsg(NAMEOF(DoserEStopMsg)) {
+
     }
 
-    bool skipRetract() {
-        if ((*this)["skipRetract"].isNull()) {
-            return false;
+};
+
+class DoserCalibratePortMsg : public GbMsg {
+    public:
+    String myType() {return NAMEOF(DoserCalibratePortMsg);}
+    DoserCalibratePortMsg(StaticJsonDocument<MSG_JSON_SIZE> ref) : GbMsg(ref) {};
+    DoserCalibratePortMsg(int port) : GbMsg(NAMEOF(DoserCalibratePortMsg)) {
+        (*this)["port"] = port;
+    }
+
+    int port() {
+        if ((*this)["port"].isNull()) {
+            return -1;
         }
-        return (*this)["skipRetract"].as<bool>();
+        return (*this)["port"].as<int>();
     }
 };
 
@@ -164,16 +207,10 @@ class DoserStartContinuousPortMsg : public GbMsg {
     public:
     String myType() {return NAMEOF(DoserStartContinuousPortMsg);}
     DoserStartContinuousPortMsg(StaticJsonDocument<MSG_JSON_SIZE> ref) : GbMsg(ref) {};
-    DoserStartContinuousPortMsg(int port, bool skipRetract) : GbMsg(NAMEOF(DoserStartContinuousPortMsg)) {
+    DoserStartContinuousPortMsg(int port) : GbMsg(NAMEOF(DoserStartContinuousPortMsg)) {
         (*this)["port"] = port;
-        (*this)["skipRetract"] = skipRetract;
     }
-    bool skipRetract() {
-        if ((*this)["skipRetract"].isNull()) {
-            return false;
-        }
-        return (*this)["skipRetract"].as<bool>();
-    }
+   
     int port() {
         return (*this)["port"].as<int>();
     }

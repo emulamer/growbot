@@ -8,6 +8,8 @@
 #include "LuxSensorMsgs.h"
 #include "LightifyMsgs.h"
 #include "DoserMsgs.h"
+#include "TimeMsgs.h"
+#include "PowerMonMsgs.h"
 
 #pragma once
 GbMsg* parseGbMsg(char* payload, int length) {
@@ -61,6 +63,16 @@ GbMsg* parseGbMsg(char* payload, int length) {
       return new DoserEStopMsg(doc);
     } else if (msgType.equals(NAMEOF(DoserStartContinuousPortMsg))) { 
       return new DoserStartContinuousPortMsg(doc);
+    } else if (msgType.equals(NAMEOF(DoserCalibratePortMsg))) {
+      return new DoserCalibratePortMsg(doc);
+    } else if (msgType.equals(NAMEOF(DoserCalibrateEndedMsg)))  {
+      return new DoserCalibrateEndedMsg(doc);
+ //   } else if (msgType.equals(NAMEOF(TimeSourceMsg)))  {
+//      return new TimeSourceMsg(doc);
+    } else if (msgType.equals(NAMEOF(PowerMonStatusMsg)))  {
+      return new PowerMonStatusMsg(doc);
+    } else if (msgType.equals(NAMEOF(PowerMonCommandMsg)))  {
+      return new PowerMonCommandMsg(doc);
     } else {
        // dbg.printf("Unknown message: %s\n", msgType.c_str());
         return NULL;
