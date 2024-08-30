@@ -18,9 +18,9 @@
 #include "DoserPump.h"
 #include "DoserMsgs.h"
 
-#define STEPS_PER_ML 4870  //4970 //4675
+#define STEPS_PER_ML 5300  //4970 //4675
 #define RETRACTION_ML 2.0
-#define MAX_RPM 120
+#define MAX_RPM 200
 #define NUM_DOSERS 6
 #define MAX_CONCURRENT_ACTIVE 1
 #define MAX_ML_DOSE 1000
@@ -33,12 +33,12 @@
 // #define TUBE_SENSOR_6_PIN 15
 
 
-#define TUBE_SENSOR_1_PIN 35 
-#define TUBE_SENSOR_2_PIN 36 //(SP)
-#define TUBE_SENSOR_3_PIN 23
-#define TUBE_SENSOR_4_PIN 39 //(SW)
-#define TUBE_SENSOR_5_PIN 22
-#define TUBE_SENSOR_6_PIN 34
+#define TUBE_SENSOR_1_PIN 36// 35 
+#define TUBE_SENSOR_2_PIN 35//36 //(SP)
+#define TUBE_SENSOR_3_PIN 39//23
+#define TUBE_SENSOR_4_PIN 23//39 //(SW)
+#define TUBE_SENSOR_5_PIN 34//22
+#define TUBE_SENSOR_6_PIN 22//34
 
 
 #define PUMP_1_DIR_PIN 0 //23
@@ -126,12 +126,12 @@ void doseEnd(int doserId, int doseType, bool aborted, long stepsDosed, float mlD
 
 void initDosers() {
   
-  dosers[0] = new DoserPumpA4988(1, PUMP_1_DIR_PIN, PUMP_1_STEP_PIN, PUMP_1_SLEEP_PIN, TUBE_SENSOR_1_PIN, STEPS_PER_ML, MAX_RPM, doseEnd);
-  dosers[1] = new DoserPumpA4988(2, PUMP_2_DIR_PIN, PUMP_2_STEP_PIN, PUMP_2_SLEEP_PIN, TUBE_SENSOR_2_PIN, STEPS_PER_ML, MAX_RPM, doseEnd);
-  dosers[2] = new DoserPumpA4988(3, PUMP_3_DIR_PIN, PUMP_3_STEP_PIN, PUMP_3_SLEEP_PIN, TUBE_SENSOR_3_PIN, STEPS_PER_ML, MAX_RPM, doseEnd);
-  dosers[3] = new DoserPumpA4988(4, PUMP_4_DIR_PIN, PUMP_4_STEP_PIN, PUMP_4_SLEEP_PIN, TUBE_SENSOR_4_PIN, STEPS_PER_ML, MAX_RPM, doseEnd);
-  dosers[4] = new DoserPumpA4988(5, PUMP_5_DIR_PIN, PUMP_5_STEP_PIN, PUMP_5_SLEEP_PIN, TUBE_SENSOR_5_PIN, STEPS_PER_ML, MAX_RPM, doseEnd);
-  dosers[5] = new DoserPumpA4988(6, PUMP_6_DIR_PIN, PUMP_6_STEP_PIN, PUMP_6_SLEEP_PIN, TUBE_SENSOR_6_PIN, STEPS_PER_ML, MAX_RPM, doseEnd);
+  dosers[0] = new DoserPumpA4988(1, PUMP_1_DIR_PIN, PUMP_1_STEP_PIN, PUMP_1_SLEEP_PIN, TUBE_SENSOR_1_PIN, STEPS_PER_ML, MAX_RPM, true, doseEnd);
+  dosers[1] = new DoserPumpA4988(2, PUMP_2_DIR_PIN, PUMP_2_STEP_PIN, PUMP_2_SLEEP_PIN, TUBE_SENSOR_2_PIN, STEPS_PER_ML, MAX_RPM, false, doseEnd);
+  dosers[2] = new DoserPumpA4988(3, PUMP_3_DIR_PIN, PUMP_3_STEP_PIN, PUMP_3_SLEEP_PIN, TUBE_SENSOR_3_PIN, STEPS_PER_ML, MAX_RPM, true, doseEnd);
+  dosers[3] = new DoserPumpA4988(4, PUMP_4_DIR_PIN, PUMP_4_STEP_PIN, PUMP_4_SLEEP_PIN, TUBE_SENSOR_4_PIN, STEPS_PER_ML, MAX_RPM, false, doseEnd);
+  dosers[4] = new DoserPumpA4988(5, PUMP_5_DIR_PIN, PUMP_5_STEP_PIN, PUMP_5_SLEEP_PIN, TUBE_SENSOR_5_PIN, STEPS_PER_ML, MAX_RPM, true, doseEnd);
+  dosers[5] = new DoserPumpA4988(6, PUMP_6_DIR_PIN, PUMP_6_STEP_PIN, PUMP_6_SLEEP_PIN, TUBE_SENSOR_6_PIN, STEPS_PER_ML, MAX_RPM, false, doseEnd);
 
   
 }
@@ -204,18 +204,43 @@ void calibrationEnded(int doserId, bool success, long bottle2SensorSteps, long s
   server.broadcast(msg);
 }
 
-
-void onCalibrateMsg(MessageWrapper& mw) {
+void onRetractMsg(MessageWrapper& mw) {
   GbResultMsg res;
-  DoserCalibratePortMsg* smsg = (DoserCalibratePortMsg*)mw.message;
-  dbg.printf("start calibrate port %d\n", smsg->port());
+  DoserRetractPortMsg* smsg = (DoserRetractPortMsg*)mw.message;
+  dbg.printf("retract port %d\n", smsg->port());
   int port = smsg->port();
   if (port < 1 || port > NUM_DOSERS) {
     res.setUnsuccess("Invalid port");
     mw.reply(res);
     return;
   }
-  if (dosers[port-1]->startCalibrate(calibrationEnded)) {
+  if (dosers[port-1]->retract()) {
+    res.setSuccess();
+  } else {
+    dbg.println("Retract failed to start");
+    res.setUnsuccess("Failed to start retract");
+  }
+  
+  mw.reply(res);
+
+}
+
+
+void onCalibrateMsg(MessageWrapper& mw) {
+  GbResultMsg res;
+  DoserCalibratePortMsg* smsg = (DoserCalibratePortMsg*)mw.message;
+  dbg.printf("start calibrate port %d\n", smsg->port());
+  int port = smsg->port();
+  int startStep = smsg->startStep();
+  if (startStep < 0 || startStep > 99) {
+    startStep = 0;
+  }
+  if (port < 1 || port > NUM_DOSERS) {
+    res.setUnsuccess("Invalid port");
+    mw.reply(res);
+    return;
+  }
+  if (dosers[port-1]->startCalibrate(startStep, calibrationEnded)) {
     res.setSuccess();
   } else {
     dbg.println("Calibration failed to start");
@@ -326,6 +351,7 @@ void setup() {
   dbg.println("calling ezEspSetup");
   ezEspSetup(MDNS_NAME, WIFI_SSID, WIFI_PASSWORD,[]() {
             dbg.println("Update starting, stoping all dosing");
+            stopAll();
             //todo: abort dosing, send abort end msgs
             // inValve->setOpen(false);
             // outValve->setOpen(false);
@@ -339,6 +365,7 @@ void setup() {
   server.onMessage(NAMEOF(DoserStartContinuousPortMsg), onStartContinuousMsg);
   server.onMessage(NAMEOF(DoserEStopMsg), onEStopMsg);
   server.onMessage(NAMEOF(DoserCalibratePortMsg), onCalibrateMsg);
+  server.onMessage(NAMEOF(DoserRetractPortMsg), onRetractMsg);
   server.init();
   dosers[0]->init();
   dosers[1]->init();
@@ -351,7 +378,7 @@ void setup() {
 
 int interval = 5000;
 unsigned long lastMillis = 0;
-
+bool initted = false;
 void loop() {
   ezEspLoop();
   server.handle();
@@ -361,7 +388,7 @@ void loop() {
   if (millis() - lastMillis > interval) {
     broadcastStatus();
     lastMillis = millis();
-    dbg.printf(" sensor pin1 %d 2 is %d 3 is %d 4 is %d 5 is %d 6 is %d\n", digitalRead(TUBE_SENSOR_1_PIN), digitalRead(TUBE_SENSOR_2_PIN), digitalRead(TUBE_SENSOR_3_PIN), digitalRead(TUBE_SENSOR_4_PIN), digitalRead(TUBE_SENSOR_5_PIN), digitalRead(TUBE_SENSOR_6_PIN));
+   // dbg.printf(" sensor pin1 %d 2 is %d 3 is %d 4 is %d 5 is %d 6 is %d\n", digitalRead(TUBE_SENSOR_1_PIN), digitalRead(TUBE_SENSOR_2_PIN), digitalRead(TUBE_SENSOR_3_PIN), digitalRead(TUBE_SENSOR_4_PIN), digitalRead(TUBE_SENSOR_5_PIN), digitalRead(TUBE_SENSOR_6_PIN));
     // dbg.printf("udp port is %d\n", server.getPort());
     // dbg.printf("started is %d\n", server.isStarted());
     // dbg.printf("msgcount is %d\n", server.messageCount());

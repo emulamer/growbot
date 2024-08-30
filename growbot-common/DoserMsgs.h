@@ -164,12 +164,28 @@ class DoserEStopMsg : public GbMsg {
 
 };
 
+class DoserRetractPortMsg : public GbMsg {
+    public:
+    String myType() {return NAMEOF(DoserRetractPortMsg);}
+    DoserRetractPortMsg(StaticJsonDocument<MSG_JSON_SIZE> ref) : GbMsg(ref) {};
+    DoserRetractPortMsg(int port) : GbMsg(NAMEOF(DoserRetractPortMsg)) {
+        (*this)["port"] = port;
+    }
+    int port() {
+        if ((*this)["port"].isNull()) {
+            return -1;
+        }
+        return (*this)["port"].as<int>();
+    }
+};
+
 class DoserCalibratePortMsg : public GbMsg {
     public:
     String myType() {return NAMEOF(DoserCalibratePortMsg);}
     DoserCalibratePortMsg(StaticJsonDocument<MSG_JSON_SIZE> ref) : GbMsg(ref) {};
-    DoserCalibratePortMsg(int port) : GbMsg(NAMEOF(DoserCalibratePortMsg)) {
+    DoserCalibratePortMsg(int port, int startStep) : GbMsg(NAMEOF(DoserCalibratePortMsg)) {
         (*this)["port"] = port;
+        (*this)["startStep"] = startStep;
     }
 
     int port() {
@@ -177,6 +193,12 @@ class DoserCalibratePortMsg : public GbMsg {
             return -1;
         }
         return (*this)["port"].as<int>();
+    }
+    int startStep() {
+        if ((*this)["startStep"].isNull()) {
+            return 0;
+        }
+        return (*this)["startStep"].as<int>();
     }
 };
 

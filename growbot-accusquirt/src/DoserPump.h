@@ -1,5 +1,6 @@
 #include <Arduino.h>
-#include <BasicStepperDriver.h>
+#include "FastAccelStepper.h"
+///#include <BasicStepperDriver.h>
 
 /**** Doser pump ****
  * Provides a functions for interacting with a single stepper-based doser pump.
@@ -17,19 +18,24 @@
  */
 #pragma once
 
+bool engineInitted = false;
+FastAccelStepperEngine engine = FastAccelStepperEngine();
+
 #define DEFAULT_STEPS_PER_ML 4790
 
 #define DEFAULT_RETRACTION_ML 1.5
 
 #define DEFAULT_MAX_RPM 140
 
-#define TUBE_PURGE_STEPS 150000
+#define TUBE_PURGE_STEPS 150000 
+//150000
 
 #define CALIB_MEDIUM_DIVISOR 2
 #define CALIB_SLOW_DIVISOR 3
 #define CALIB_VERY_SLOW_DIVISOR 6
 
 #define NUMBER_OF_STEPS_PER_ROTATION 200
+
 
 //callback definition for when dosing or continuous pumping ends
 //  doserId: the ID of the doser provided when constructing the object
@@ -91,9 +97,7 @@ class DoserPump {
     // }
 
     // //gets a value indicating whether the liquid is currently in a retracted state
-    // bool isRetracted() {
-    //     return retracted;
-    // }
+    
 
     //gets the max RPM
     float getMaxRpm() {
@@ -171,42 +175,131 @@ class DoserPump {
     //if retraction is disabled or already in a retracted state, returns false.
     //returns false if dosing or pumping is already in progress.
     //does not call dose end callback.
-    //virtual bool retractImmediate() = 0;
+    virtual bool retract() = 0;
 
     //blocking call.  If retracted, immediately un-retracts to the set number of ml.
     //if retraction is disabled or already not in a retracted state, returns false.
     //returns false if dosing or pumping is already in progress.
     //does not call dose end callback.
    // virtual bool unretractImmediate() = 0;
-    virtual bool startCalibrate(DoseCalibrateEndCallback callback) = 0;
+    virtual bool startCalibrate(int startStep, DoseCalibrateEndCallback callback) = 0;
 
 };
 
 //implementation of DoserPump for an A4988 stepper driver
 class DoserPumpA4988 : public DoserPump {
     private:
-        BasicStepperDriver *stepper;
+        //BasicStepperDriver *stepper;
+        FastAccelStepper *stepperF;
         long actualLastDosedSteps = 0;
         long totalDoseSteps = 0;
-
+        long dirInversion = 1;
         //sensor related stuff 
         int sensorPin = -1;
-         int onSensorInterruptAction = 0;
+        int onSensorInterruptAction = 0;
+        unsigned long onSensorDetectDelay = 0;
         static void IRAM_ATTR sensorChange(void* ref);
         bool sensorChangedSinceLast = false;
         bool sensorState = false;
         long sensorInterruptStepCount = 0;
+        
 
         DoseCalibrateEndCallback calibrationCallback = 0;
-
-        void initStepper(int dirPin, int stepPin, int sleepPin) {
-            this->stepper = new BasicStepperDriver(NUMBER_OF_STEPS_PER_ROTATION, dirPin, stepPin, sleepPin);
-            this->stepper->begin(this->maxRpm, 16);
-            this->stepper->setSpeedProfile(BasicStepperDriver::CONSTANT_SPEED, 1000, 1000);
-            this->stepper->setEnableActiveState(HIGH);
-            dbg.printf("stepper disable!");
-            this->stepper->disable();
+        void setRpmF(float rpm) {
+            if (stepperF) {          
+                int32_t hz =      (rpm / 60.0) * NUMBER_OF_STEPS_PER_ROTATION;
+                hz *= 16; //microsteps
+                dbg.printf("Setting speed to %d\n", hz);
+                stepperF->setSpeedInHz(hz );
+            }
         }
+        void doMove(long steps, bool block = false) {
+            if (stepperF) {
+                stepperF->setAcceleration(50000);
+                stepperF->move(0, true);
+                stepperF->setCurrentPosition(0);
+                stepperF->moveTo(dirInversion * steps, block);
+            } else {
+                dbg.println("stepper not initialized");
+            }
+        }
+        void slowMove(long steps, bool block = false) {
+            if (stepperF) {
+                stepperF->setAcceleration(1000);
+                stepperF->setCurrentPosition(0);
+                stepperF->moveTo(dirInversion * steps, block);
+            } else {
+                dbg.println("stepper not initialized");
+            }
+        }
+        void easyMove(long steps, bool block = false) {
+            if (stepperF) {
+                stepperF->setAcceleration(10000);
+                stepperF->setCurrentPosition(0);
+                stepperF->moveTo(dirInversion * steps, block);
+            } else {
+                dbg.println("stepper not initialized");
+            }
+        }
+        void disableStepper() {
+            if (stepperF) {
+                stepperF->disableOutputs();
+            }
+        }
+        void enableStepper() {
+            if (stepperF) {
+                stepperF->enableOutputs();
+            }
+        }
+        void stopStepper(bool easy = false) {
+            if (stepperF) {
+                stepperF->setAcceleration(easy?10000:50000);
+                stepperF->stopMove();
+                int ctr = 0;
+                while (stepperF->isStopping() && ctr < 100) {
+                    delay(1);
+                }
+                if (ctr >= 100) {
+                    dbg.println("Failed to stop stepper");
+                    stepperF->forceStop();
+                }
+            }
+        }
+        void initStepper(int dirPin, int stepPin, int sleepPin) {
+            if (!engineInitted) {
+                engine.init();
+                engineInitted = true;
+            }
+            stepperF = engine.stepperConnectToPin(stepPin);
+            if (!stepperF) {
+                dbg.printf("Failed to connect stepper to pin %d\n", stepPin);
+            } else {
+                stepperF->setDirectionPin(dirPin);
+                stepperF->setEnablePin(sleepPin, false);
+                stepperF->setAutoEnable(true);
+                stepperF->setDelayToDisable(5000);
+                //stepperF->disableOutputs();
+                
+                
+                //stepperF->setSpeedInHz(100);
+                setRpmF(maxRpm);
+                stepperF->setAcceleration(50000);
+                
+
+            }
+
+            // this->stepper = new BasicStepperDriver(NUMBER_OF_STEPS_PER_ROTATION, dirPin, stepPin, sleepPin);
+            // this->stepper->begin(this->maxRpm, 16);
+            // this->stepper->setSpeedProfile(BasicStepperDriver::CONSTANT_SPEED, 1000, 1000);
+            // this->stepper->setEnableActiveState(HIGH);
+            // dbg.printf("stepper disable!");
+            // this->stepper->disable();
+        }
+
+            int32_t getSteps() {
+                return dirInversion * stepperF->getCurrentPosition();
+            }
+
         // long adjustedStepsCompleted() {
         //     long totalSteps = stepper->getStepsCompleted() - calibSensor2Dose;
         //     if (totalSteps < 0) {
@@ -258,8 +351,13 @@ class DoserPumpA4988 : public DoserPump {
         //     totalDoseSteps = 0;
         // }
     public:
-        DoserPumpA4988(int doserId, int dirPin, int stepPin, int sleepPin) : DoserPump(doserId) {
+        DoserPumpA4988(int doserId, int dirPin, int stepPin, int sleepPin, bool reverseDirection) : DoserPump(doserId) {
             initStepper(dirPin, stepPin, sleepPin);
+            if (reverseDirection) {
+                dirInversion = -1;
+            } else {
+                dirInversion = 1;
+            }
         }
         //doserId: an arbitrary identifier for this doser, useful for sharing a callback between multiple instances
         //dirPin: the pin that is wired to the direction pin on the A4988
@@ -270,10 +368,15 @@ class DoserPumpA4988 : public DoserPump {
         //retractionEnabled: true to enable retraction functionality to reverse the pump after dispensing to keep the liquid from dripping
         //retractionML: the number of mililiters to retract the fluid after dispensing
         //isRetracted: the initial state of whether it is starting with fluid retracted
-        DoserPumpA4988(int doserId, int dirPin, int stepPin, int sleepPin, int sensorPin, unsigned long stepsPerMl, float maxRpm, DoseEndCallback endCallback) : DoserPump(doserId, stepsPerMl, maxRpm) {
+        DoserPumpA4988(int doserId, int dirPin, int stepPin, int sleepPin, int sensorPin, unsigned long stepsPerMl, float maxRpm, bool reverseDirection, DoseEndCallback endCallback) : DoserPump(doserId, stepsPerMl, maxRpm) {
             setDoseEndCallback(endCallback);
             initStepper(dirPin, stepPin, sleepPin);     
-            this->sensorPin = sensorPin;       
+            this->sensorPin = sensorPin;
+            if (reverseDirection) {
+                dirInversion = -1;
+            } else {
+                dirInversion = 1;
+            }
         }
 
         void init() {
@@ -287,6 +390,9 @@ class DoserPumpA4988 : public DoserPump {
                 //attachInterruptArg(this->sensorPin, DoserPumpA4988::sensorChange, this, FALLING);
                 //attachInterruptArg(this->sensorPin, DoserPumpA4988::sensorChange, this, RISING);
             }            
+        }
+        bool isRetracted() {
+            return sensorState;
         }
 
 /*
@@ -341,57 +447,168 @@ class DoserPumpA4988 : public DoserPump {
         }
 
         void abortDosing(int errCode, String msg, long lastStepsDosed = 0, float actualMlDosed = 0) {
-            stepper->stop();
-            dbg.printf("stepper disable!");
-            stepper->disable();
+            stopStepper();
+            //stepper->stop();
+            //stepper->disable();
             onSensorInterruptAction = 0;
             dosingStage = 0;            
             totalDoseSteps = 0;
+            dbg.printf("Aborting dosing, error code: %d, message: %s\n", errCode, msg.c_str());
             doseEndCallback(doserId, 1, true, lastStepsDosed, actualMlDosed);
-            //todo errors and stuff
+            //retract on dose fail
+            retract();
+            
+        }
+//takes ~500ms for sensor to update
+#define STABLE_SENSOR_TIME_WAIT 650
+#define ADJ_STEP_AMT 64
+void watchdogHack() {
+            //this is shitty code to put this here instead of making it non blocking
+        #ifdef ARDUINO_ARCH_ESP8266
+            ESP.wdtFeed();
+        #elif defined(ARDUINO_ARCH_ESP32)
+            esp_task_wdt_reset();
+        #endif
+}
+    bool isSensorStable(int loopCount = 1, bool forceValue = false, bool desiredValue = false) {
+        bool startingState = sensorState;
+        unsigned long endStamp = millis() + (STABLE_SENSOR_TIME_WAIT * loopCount);
+        sensorState = !digitalRead(sensorPin);
+        while ( millis() < endStamp) {
+            sensorState = !digitalRead(sensorPin);
+            
+            lastSensorState = sensorState;
+            if (forceValue && sensorState != desiredValue) {
+                return false;
+            }
+            if (sensorState != startingState) {
+                return false;
+            }
+            watchdogHack();
+            delay(1);
+        }
+        return sensorState == startingState;
+    }
+    #define STABILIZE_MAX_WAIT_BLOCK_MS 15000
+
+
+
+    bool stabilizeAlign() {
+        dbg.println("Stabilizing alignment off point");
+        if (!stabilizeOff()) {
+            return false;
         }
 
-        void retract() {
+watchdogHack();
+
+        dbg.println("Stabilizing alignment on point");
+        if (!stabilizeOn()) {
+            return false;
+        }
+        return true;
+    }
+bool stabilizeOn() {
+    int lastSensorMode = onSensorInterruptAction;
+    onSensorInterruptAction = 0;
+    unsigned long endStamp = millis() + STABILIZE_MAX_WAIT_BLOCK_MS;
+    while (!isSensorStable(6, true, true) && millis() < endStamp) {
+        slowMove(ADJ_STEP_AMT, true);
+    }
+    lastSensorState = sensorState;
+    onSensorInterruptAction = lastSensorMode;
+    bool res =  !(millis() > endStamp);        
+    dbg.printf("Stabilize on result: %d\n", res);
+    return res;
+}
+
+bool stabilizeOff() {
+    int lastSensorMode = onSensorInterruptAction;
+    onSensorInterruptAction = 0;
+    unsigned long endStamp = millis() + STABILIZE_MAX_WAIT_BLOCK_MS;
+    while (!isSensorStable(6, true, false) && millis() < endStamp) {
+        slowMove(-ADJ_STEP_AMT, true);
+    }
+    lastSensorState = sensorState;
+    onSensorInterruptAction = lastSensorMode;
+    bool res =  !(millis() > endStamp);        
+    dbg.printf("Stabilize off result: %d\n", res);
+    return res;
+}
+        bool retract() {
             if (isPumping()) {
-                return;
+                return false;
             }
             isRetracting = true;
             onSensorInterruptAction = 0;
-            stepper->setRPM(maxRpm);
-            stepper->enable();
-            stepper->startMove(getPurgeSteps());
+            //stepper->setRPM(maxRpm);
+            setRpmF(maxRpm);
+            //stepper->enable();
+            //stepperF->en
+            doMove(getPurgeSteps());
+            //stepper->startMove(getPurgeSteps());
+            return true;
         }
 
         void doseNextStep(byte triggeredBy) {
             //triggeredBy: 0 = user?,  1 = move finished, 2 = sensor changed state
             dosingStage++;
             if (dosingStage == 1) {
+                //there's stuff in the tube, purge it.
+                if (sensorState) {
+                    onSensorInterruptAction = 0;
+                    //after move is done here, do all the completion stuff
+                    dbg.println("There's fluid in the line, purging it.");
+                    setRpmF(maxRpm);
+                    //stepper->setRPM(maxRpm);
+                    //stepper->enable();
+                    //stepper->startMove(getPurgeSteps());
+                    slowMove(getPurgeSteps());
+                } else {
+                    dosingStage++;
+                }
+            }
+            
+            if (dosingStage == 2) {
+                if (sensorState) {
+                    dbg.println("Sensor is already indicating liquid, can't dose.");
+                    abortDosing(1, "Liquid in tube when not expected.");
+                    return;
+                }
                 onSensorInterruptAction = 1;
                 //first step, purge the line backwards, fill it with air
                 dbg.printf("Dose stage 1: Fast forward to calib point of %d\n", calibBottle2Sensor);
-                stepper->setRPM(maxRpm);
-                stepper->enable();
-                stepper->startMove(calibBottle2Sensor);
-            } else if (dosingStage == 2) {
+                //stepper->setRPM(maxRpm);
+                setRpmF(maxRpm);
+                //stepper->enable();
+                //stepper->startMove(calibBottle2Sensor);
+                doMove(calibBottle2Sensor);
+            } else if (dosingStage == 3) {
                 if (triggeredBy == 1) {
-
-                    dbg.printf("Starting slow dose alignment, step count pref of %d, next of %d\n", stepper->getStepsCompleted(), calibBottle2Sensor);
+                    int32_t completedSteps = getSteps();//stepperF->getCurrentPosition();
+                    dbg.printf("Starting slow dose alignment, step count pref of %d, next of %d\n", completedSteps, calibBottle2Sensor);
                     onSensorInterruptAction = 1;
-                    stepper->setRPM(maxRpm/CALIB_VERY_SLOW_DIVISOR);
-                    stepper->enable();
-                    stepper->startMove(calibBottle2Sensor);
+                    setRpmF(maxRpm/CALIB_VERY_SLOW_DIVISOR);
+                    //stepper->setRPM(maxRpm/CALIB_VERY_SLOW_DIVISOR);
+                    //stepper->enable();
+                    //stepper->startMove(calibBottle2Sensor);
+                    doMove(calibBottle2Sensor);
                 } else if (triggeredBy == 2) {
                     
                     abortDosing(1, "Sensor toggled in an unexpected way.");
                     return;
                 }
                 
-            } else if (dosingStage == 3) {
+            } else if (dosingStage == 4) {
                 onSensorInterruptAction = 1;
                 if (triggeredBy == 1) {
-                    dbg.printf("Slow dose failed, sensor didn't trip after %d\n", stepper->getStepsCompleted());
+                    int32_t completedSteps = getSteps();//stepperF->getCurrentPosition();//stepper->getStepsCompleted();
+                    dbg.printf("Slow dose failed, sensor didn't trip after %d\n", completedSteps);
                     abortDosing(1, "Sensor didn't trip on slow align stage 3");
                 } else if (triggeredBy == 2) {
+                    if (!stabilizeAlign()) {
+                        abortDosing(2, "Sensor didn't stabilize.");
+                        return;
+                    }
                     if (!sensorState) {
                         //sensor triggered early, abort
                         abortDosing(1, "Sensor state is bad, shows empty");
@@ -399,14 +616,17 @@ class DoserPumpA4988 : public DoserPump {
                     }
                     dbg.printf("Aligned for dosing, running forward %d steps plus sensor to dose calib of %d\n", totalDoseSteps, calibSensor2Dose);
                     onSensorInterruptAction = 1;
-                    stepper->setRPM(maxRpm);
-                    stepper->enable();
-                    stepper->startMove(totalDoseSteps+calibSensor2Dose);
+                    onSensorDetectDelay = millis() + 1000;
+                    setRpmF(maxRpm);
+                    //stepper->setRPM(maxRpm);
+                    // stepper->enable();
+                    // stepper->startMove(totalDoseSteps+calibSensor2Dose);
+                    easyMove(totalDoseSteps+calibSensor2Dose);
                 }
-            } else if (dosingStage == 4) {
+            } else if (dosingStage == 5) {
                 onSensorInterruptAction = 0;
                 if (triggeredBy == 1) {                    
-                    long completedSteps = stepper->getStepsCompleted();
+                    long completedSteps = getSteps();//stepperF->getCurrentPosition();//stepper->getStepsCompleted();
                     dbg.printf("step 4 raw stepper completed steps %d\n", completedSteps);
                     completedSteps = completedSteps - calibSensor2Dose;
                     dbg.printf("step 4 adjusted completed steps %d\n", completedSteps);
@@ -420,9 +640,11 @@ class DoserPumpA4988 : public DoserPump {
                     onSensorInterruptAction = 0;
                     //after move is done here, do all the completion stuff
                     dbg.println("Dose done, purging line.");
-                    stepper->setRPM(maxRpm);
-                    stepper->enable();
-                    stepper->startMove(getPurgeSteps());
+                    setRpmF(maxRpm);
+                    //stepper->setRPM(maxRpm);
+                    //stepper->enable();
+                    //stepper->startMove(getPurgeSteps());
+                    doMove(getPurgeSteps());
                     
                 } else if (triggeredBy == 2) {
                     //if (!sensorState) { //does it matter?
@@ -443,27 +665,25 @@ class DoserPumpA4988 : public DoserPump {
                     }
                     return;
                 }
-            } else if (dosingStage == 5) {
+            } else if (dosingStage == 6) {
                 dosingStage = 0;
                 float dosed = (float)((double)(actualLastDosedSteps) / (double)stepsPermL);
                 if (dosed < 0) {
                     dosed = 0;
                 }
-                dbg.printf("stepper disable!");
-                stepper->disable();
+               
+                //stepper->disable();
                 doseEndCallback(doserId, 1, true, actualLastDosedSteps, dosed);
-            } else if (dosingStage == 6) {
-
             }
         }
 
-        bool startCalibrate(DoseCalibrateEndCallback callback) {
+        bool startCalibrate(int startStep, DoseCalibrateEndCallback callback) {
             if (isPumping()) {
                 dbg.println("Pump is already pumping, cannot calibrate");
                 return false;
             }
             this->calibrationCallback = callback;
-            calibrationStage = 0;
+            calibrationStage = startStep;
             calibrateNextStep(0);
             return true;
         }
@@ -501,38 +721,51 @@ class DoserPumpA4988 : public DoserPump {
         void abortCalibration(int errCode, String msg) {
             onSensorInterruptAction = 0;
             calibrationStage = 0;
-            stepper->stop();
-            dbg.printf("stepper disable!");
-            stepper->disable();
+            //stepper->stop();
+            stopStepper();
+            dbg.printf("Calibration aborted, error code: %d, message: %s\n", errCode, msg.c_str());
+            //stepper->disable();
             if (calibrationCallback != NULL) {
                 calibrationCallback(doserId, false, 0, 0, errCode, msg);
                 calibrationCallback = NULL;
             }
         }
 
+int calibFineTuneLoops = 0;
+int calibFineTuneStep = 0;
+bool calibFineTuneFwd = false;
+
     void setCalibration(long bottleToSensorCalib, long sensorToDoseCalib) {
         this->calibBottle2Sensor = bottleToSensorCalib;
         this->calibSensor2Dose = sensorToDoseCalib;
     }
+
+
+
         //need to know if the sensor tripped or what
         void calibrateNextStep(byte triggeredBy) {
             //triggeredBy: 0 = user?,  1 = move finished, 2 = sensor changed state
             calibrationStage++;
             if (calibrationStage == 1) {
+                
                 //first step, purge the line backwards, fill it with air
                 dbg.println("Calibration step 1: Purging tube");
-                stepper->setRPM(maxRpm);
-                stepper->enable();
-                stepper->startMove(-TUBE_PURGE_STEPS);
+                setRpmF(maxRpm);
+                //stepper->setRPM(maxRpm);
+                //stepper->enable();
+                //stepper->startMove(-TUBE_PURGE_STEPS);
+                doMove(-TUBE_PURGE_STEPS);
                 dbg.printf("Calibration step 1: started the stepper on startMove at rpm %f\n", maxRpm);
             } else if (calibrationStage == 2) {
                 // move slower forward, aim will be for sensor to catch it with the sensor
                 dbg.println("Calibration step 2: Medium forward until sensor triggers");
                 //set the interrupt to stop the pump immediately when triggered
                 onSensorInterruptAction = 1;
-                stepper->setRPM(maxRpm/CALIB_MEDIUM_DIVISOR);
-                stepper->enable();
-                stepper->startMove(TUBE_PURGE_STEPS);
+                //stepper->setRPM(maxRpm/CALIB_MEDIUM_DIVISOR);
+                setRpmF(maxRpm/CALIB_MEDIUM_DIVISOR);
+                //stepper->enable();
+                //stepper->startMove(TUBE_PURGE_STEPS);
+                doMove(TUBE_PURGE_STEPS);
             } else if (calibrationStage == 3) {
                 //see if triggered by mode finished or sensor changed state
                 dbg.printf("Calibration step 3: triggered by %d\n", triggeredBy);
@@ -547,9 +780,11 @@ class DoserPumpA4988 : public DoserPump {
                     //calibrationTempB2S = this->sensorInterruptStepCount;
                     calibBottle2Sensor = (int)((double)sensorInterruptStepCount * (double)0.8);
                     dbg.printf("stored bottle calib step count is %l\n", calibBottle2Sensor);
-                    stepper->setRPM(maxRpm);
-                    stepper->enable();
-                    stepper->startMove(-TUBE_PURGE_STEPS);
+                    setRpmF(maxRpm);
+                    //stepper->setRPM(maxRpm);
+                    //stepper->enable();
+                    //stepper->startMove(-TUBE_PURGE_STEPS);
+                    doMove(-TUBE_PURGE_STEPS);
                 } else {
                     //uh, should have been triggered by one of the above
                     abortCalibration(0, "Unknown error");
@@ -557,15 +792,23 @@ class DoserPumpA4988 : public DoserPump {
                 }
             } else if (calibrationStage == 4) {
                 dbg.println("Step 4, fast load from bottle");
-                stepper->setRPM(maxRpm);
-                stepper->enable();
-                stepper->startMove(calibBottle2Sensor);
+                //stepper->setRPM(maxRpm);
+                setRpmF(maxRpm);
+                //stepper->enable();
+                //stepper->startMove(calibBottle2Sensor);
+                //stepperF->setCurrentPosition(0);
+                slowMove(calibBottle2Sensor);
+                //stepperF->move(calibBottle2Sensor);
             } else if (calibrationStage == 5) {
                 dbg.println("Step 5, slow load from bottle to sensor...");
                 onSensorInterruptAction = 1;
-                stepper->setRPM(maxRpm/CALIB_VERY_SLOW_DIVISOR);
-                stepper->enable();
-                stepper->startMove(calibBottle2Sensor);                
+                //stepper->setRPM(maxRpm/CALIB_VERY_SLOW_DIVISOR);
+                setRpmF(maxRpm/CALIB_VERY_SLOW_DIVISOR);
+                //stepper->enable();
+                //stepper->startMove(calibBottle2Sensor);                
+                //stepperF->setCurrentPosition(0);
+                //stepperF->move(calibBottle2Sensor);
+                doMove(calibBottle2Sensor);
             } else if (calibrationStage == 6) {
                 onSensorInterruptAction = 0;
                 if (triggeredBy == 1) {
@@ -574,16 +817,32 @@ class DoserPumpA4988 : public DoserPump {
                 } else if (triggeredBy == 2) {
                     dbg.printf("Set up, did it with stepcount %d\n", sensorInterruptStepCount + calibBottle2Sensor);
                     //this is where it gets messy, just fast flood it out the end for a lot
-                    stepper->setRPM(maxRpm);
-                    stepper->enable();
-                    stepper->startMove(TUBE_PURGE_STEPS);
+                    if (!stabilizeAlign()) {
+                        abortCalibration(2, "Sensor didn't stabilize.");
+                        return;
+                    }
+                    if (!sensorState) {
+                        //sensor triggered early, abort
+                        abortCalibration(1, "Test dose Sensor state is bad, shows empty");
+                        return;
+                    }
+                    setRpmF(maxRpm);
+                    //stepper->enable();
+                    //stepper->startMove(TUBE_PURGE_STEPS);
+                    stepperF->setCurrentPosition(0);
+                    easyMove(TUBE_PURGE_STEPS);
+
                 }
             } else if (calibrationStage == 7) {
                 if (triggeredBy == 1) {
                     onSensorInterruptAction = 1;
-                    stepper->setRPM(maxRpm/CALIB_VERY_SLOW_DIVISOR);
-                    stepper->enable();
-                    stepper->startMove(-TUBE_PURGE_STEPS);
+                    setRpmF(maxRpm/CALIB_VERY_SLOW_DIVISOR);
+                    //stepper->setRPM(maxRpm/CALIB_VERY_SLOW_DIVISOR);
+                    //stepper->enable();
+                    //stepper->startMove(-TUBE_PURGE_STEPS);
+                    // stepperF->setCurrentPosition(0);
+                    // stepperF->move(-TUBE_PURGE_STEPS);
+                    doMove(-TUBE_PURGE_STEPS);
                     
                 } else if (triggeredBy == 2) {
                     dbg.println("Sensor ran out of juice on step 7?");
@@ -596,15 +855,148 @@ class DoserPumpA4988 : public DoserPump {
                     abortCalibration(1, "Sensor did not trigger on stage 8.");                    
                 } else if (triggeredBy == 2) {
                     dbg.printf("there are %d steps from sensor to dose\n", sensorInterruptStepCount);
-                    calibSensor2Dose = sensorInterruptStepCount;
-                    dbg.println("Calibration almost done, purging line.");
-                    stepper->setRPM(maxRpm);
-                    stepper->enable();
-                    stepper->startMove(getPurgeSteps());
+                    calibSensor2Dose = -sensorInterruptStepCount;
+                    dbg.println("Calibration almost done, double checking measure.  Starting with purge line.");
+                    setRpmF(maxRpm);
+                    doMove(getPurgeSteps());
                 }
             } else if (calibrationStage == 9) {
+                onSensorInterruptAction = 1;
+                dbg.println("Line purged, test dosing zero");
+                setRpmF(maxRpm);
+                //stepper->enable();
+                //stepper->startMove(calibBottle2Sensor);
+                doMove(calibBottle2Sensor);
+            } else if (calibrationStage == 10) {
+                calibFineTuneLoops = 0;
+                calibFineTuneStep = 0;
+                 if (triggeredBy == 1) {
+                    int32_t completedSteps = getSteps();//stepperF->getCurrentPosition();
+                    dbg.printf("Calib starting test slow dose alignment, step count pref of %d, next of %d\n", completedSteps, calibBottle2Sensor);
+                    onSensorInterruptAction = 1;
+                    setRpmF(maxRpm/CALIB_VERY_SLOW_DIVISOR);
+                    //stepper->setRPM(maxRpm/CALIB_VERY_SLOW_DIVISOR);
+                    //stepper->enable();
+                    //stepper->startMove(calibBottle2Sensor);
+                    doMove(calibBottle2Sensor);
+                } else if (triggeredBy == 2) {
+                    
+                    abortCalibration(1, "Test dose Sensor toggled in an unexpected way.");
+                    return;
+                }
+            } else if (calibrationStage == 11) {
+                onSensorInterruptAction = 1;
+                if (triggeredBy == 1) {
+                    int32_t completedSteps = getSteps();//stepperF->getCurrentPosition();//stepper->getStepsCompleted();
+                    dbg.printf("Calib test slow dose failed, sensor didn't trip after %d\n", completedSteps);
+                    abortCalibration(1, "Sensor didn't trip on slow align test dose stage 11");
+                } else if (triggeredBy == 2) {
+                    if (!stabilizeAlign()) {
+                        abortCalibration(2, "Sensor didn't stabilize.");
+                        return;
+                    }
+                    if (!sensorState) {
+                        //sensor triggered early, abort
+                        abortCalibration(1, "Test dose Sensor state is bad, shows empty");
+                        return;
+                    }
+                    dbg.printf("Aligned for test dosing, running forward 0 steps plus sensor to dose calib of %d\n", calibSensor2Dose);
+                    onSensorInterruptAction = 1;
+                    onSensorDetectDelay = millis() + 1000;
+                    setRpmF(maxRpm);
+                    //stepper->setRPM(maxRpm);
+                    // stepper->enable();
+                    // stepper->startMove(totalDoseSteps+calibSensor2Dose);
+                    easyMove(calibSensor2Dose);
+                }
+            } else if (calibrationStage == 12) {
+                onSensorInterruptAction = 0;
+                if (triggeredBy == 1) {                    
+                    
+                    dbg.printf("calib dose adjusted completed, no trip steps %d\n");
+                    
+                    
+                    calibFineTuneLoops = 0;
+                    //now turn off the interrupt and pump it back the exact number of steps and see if it trips.  
+                    onSensorInterruptAction = 0;
+                    //after move is done here, do all the completion stuff
+                    dbg.println("test dose deployed, slowly rolling back.");
+                   
+                    setRpmF(maxRpm/CALIB_VERY_SLOW_DIVISOR);
+                    //stepper->setRPM(maxRpm);
+                    //stepper->enable();
+                    //stepper->startMove(getPurgeSteps());
+                    doMove(-calibSensor2Dose);
+                    
+                } else if (triggeredBy == 2) {
+                    dbg.printf("Calib tube empty on test dose!\n");
+                    if (!sensorState) {
+                      abortCalibration(1, "Fluid sensor is reporting empty before test dosing is complete!");  
+                    } else {
+                      abortCalibration(1, "Fluid sensor changed state during test dosing before complete!");  
+                    }
+                    return;
+                }
+            } else if (calibrationStage == 13) {
+                
+                bool stable = isSensorStable();
+                dbg.printf("fine tune loop %d, offset steps %d\n", calibFineTuneLoops, calibFineTuneStep);
+                if (calibFineTuneLoops == 0) {
+                    if (sensorState && stable) {
+                        dbg.println("Sensor is still tripped first time, let's step back a little at a time and recheck.");
+                        calibFineTuneFwd = false;
+                        calibFineTuneStep -= ADJ_STEP_AMT;
+                        slowMove(-ADJ_STEP_AMT, false);
+                    } else {
+                        dbg.println("Sensor not tripped first time, let's step fwd a little at a time and recheck.");
+                        calibFineTuneFwd = true;
+                        calibFineTuneStep += ADJ_STEP_AMT;
+                        slowMove(ADJ_STEP_AMT), true;
+                    }
+                } else {
+                    if  (!calibFineTuneFwd && (!stable || sensorState)) {
+                        dbg.printf("Sensor not tripped or isnt stable (stable: %d, state %d), stepping back a little at a time and recheck %d.\n", stable, sensorState, calibFineTuneStep);
+                        calibFineTuneFwd = false;
+                        calibFineTuneStep -= ADJ_STEP_AMT;
+                        slowMove(-ADJ_STEP_AMT, false);
+                    } else if (calibFineTuneFwd && (!stable || !sensorState)) {
+                        dbg.printf("Sensor tripped or isnt stable (stable: %d, state %d), stepping fwd a little at a time and recheck %d.\n", stable, sensorState, calibFineTuneStep);
+                        calibFineTuneFwd = true;
+                        calibFineTuneStep += ADJ_STEP_AMT;
+                        slowMove(ADJ_STEP_AMT, false);
+                    } else if (stable) {
+                        //if it's still the same, we're done
+                        if (calibFineTuneFwd && sensorState) {
+                            dbg.printf("Moved forward, now turning it off");
+                            calibFineTuneFwd = false;
+                            calibFineTuneStep -= ADJ_STEP_AMT;
+                            slowMove(-ADJ_STEP_AMT, false);
+                            calibFineTuneLoops = 1;
+                        }else {
+                            dbg.printf("Fine tune complete, sensor is now in the right spot, fine tune steps %d.  dose before adjust: %d d\n", calibFineTuneStep, calibSensor2Dose);
+                            calibSensor2Dose -= calibFineTuneStep;
+                            return;
+                        }
+                    } else {
+                        dbg.println("Sensor is not stable, uhh.. i think shouldn't be here maybe?");
+                        abortCalibration(1, "don't know what happened!");  
+                    }
+                }
+                calibFineTuneLoops++;
+                if (calibFineTuneLoops > 100) {
+                    dbg.println("Fine tune loop limit reached, aborting.");
+                    abortCalibration(2, "Fine tune loop limit reached.");
+                    return;
+                }
+                calibrationStage = 12;
+            } else if (calibrationStage == 14) {
+                dbg.println("Retracting after calibration success");
+                setRpmF(maxRpm);
+                doMove(getPurgeSteps());
+            }            
+             else if (calibrationStage == 15) {
                 dbg.printf("Calibration complete with bottle to sensor of %d and sensor to dose of %d\n", calibBottle2Sensor, calibSensor2Dose);
-                stepper->disable();
+               // stepper->disable();
                 calibrationStage = 0;
                 if (calibrationCallback != NULL) {
                     calibrationCallback(doserId, true,calibBottle2Sensor, calibSensor2Dose, 0, "");
@@ -620,15 +1012,19 @@ class DoserPumpA4988 : public DoserPump {
             actualLastDosedSteps = 0;
             totalDoseSteps = 0;
             isContinuousPumping = true;
-            stepper->enable();
-            stepper->startMove(__LONG_MAX__);
+            //stepper->enable();
+            //stepper->startMove(__LONG_MAX__);
+            setRpmF(maxRpm);
+            doMove(__LONG_MAX__);
+            
             return true;
         }
 
         //set the maximum speed in RPM that the pump will turn
         void setMaxRPM(float maxRpm) {
             DoserPump::setMaxRPM(maxRpm);
-            stepper->setRPM(maxRpm);
+            //stepper->setRPM(maxRpm);
+            setRpmF(maxRpm);
         }
         
         bool lastSensorState = false;
@@ -642,11 +1038,21 @@ class DoserPumpA4988 : public DoserPump {
         }
            //wish interrupts would work
         void detectSensorChange() {
+            if (onSensorDetectDelay > 0) {
+                if (millis() < onSensorDetectDelay) {
+                    return;
+                }
+                onSensorDetectDelay = 0;
+            }
              sensorState = !digitalRead(sensorPin);
             if (lastSensorState != sensorState) {
                 lastSensorState = sensorState;
                 DoserPumpA4988::sensorChange(this);
             }
+        }
+
+        bool stepperGoin() {
+            return stepperF->isRunning() || stepperF->isStopping();
         }
 
         void update() {
@@ -660,20 +1066,23 @@ class DoserPumpA4988 : public DoserPump {
             }
             if (calibrationStage > 0) {
                 //do calibration stuff
-                if (stepper->nextAction() < 1) {
+                if (!stepperGoin()) {
+                //if (stepper->nextAction() < 1) {
                     dbg.printf("Calibration stage %d finished via stepper nextAction being 0\n", calibrationStage);
                     calibrateNextStep(1);
                 }
             } else if (dosingStage > 0) {
-                if (stepper->nextAction() < 1) {
+                //if (stepper->nextAction() < 1) {
+                if (!stepperGoin()) {
                     dbg.printf("Dosing stage %d finished via stepper nextAction being 0\n", dosingStage);
                     doseNextStep(1);
                 }
             } else if (isContinuousPumping) {
-                if (stepper->nextAction() < 1) {
-                    long stepsDone = stepper->getStepsCompleted();
-                    dbg.printf("stepper disable!");
-                    stepper->disable();
+                //if (stepper->nextAction() < 1) {
+                if (!stepperGoin()) {
+                    long stepsDone = getSteps();//stepperF->getCurrentPosition(); // stepper->getStepsCompleted();
+                    
+                    //stepper->disable();
                     float dosed = (float)((double)(stepsDone) / (double)stepsPermL);
                     if (dosed < 0) {
                         dosed = 0;
@@ -682,9 +1091,10 @@ class DoserPumpA4988 : public DoserPump {
                     doseEndCallback(doserId, 2, false, stepsDone, dosed);
                 }
             } else if (isRetracting) {
-                if (stepper->nextAction() < 1) {
-                    dbg.printf("stepper disable!");
-                    stepper->disable();
+                //if (stepper->nextAction() < 1) {
+                if (!stepperGoin()) {
+                    
+                    //stepper->disable();
                     isRetracting = false;
                     doseEndCallback(doserId, 3, false, 0, 0);
                 }
@@ -716,7 +1126,7 @@ class DoserPumpA4988 : public DoserPump {
                 float dosed = 0;
                 if (dosingStage == 3) {
                     //if it aborted on stage 3, it's in the process of dosing and we need to get the steps it has done so far
-                    long completedSteps = stepper->getStepsCompleted() - calibSensor2Dose;
+                    long completedSteps = getSteps() - calibSensor2Dose; //stepper->getStepsCompleted() - calibSensor2Dose;
                     float dosed = (float)((double)(completedSteps) / (double)stepsPermL);
                     if (dosed < 0) {
                         dosed = 0;
@@ -733,18 +1143,18 @@ class DoserPumpA4988 : public DoserPump {
                 return true;
             }
             if (isRetracting) {
-                stepper->stop();
-                dbg.printf("stepper disable!");
-                stepper->disable();
+                //stepper->stop();
+                stopStepper();
+                //stepper->disable();
                 isRetracting = false;
                 doseEndCallback(doserId, 3, true, 0, 0);
                 return true;
             }
             if (isContinuousPumping) {
-                stepper->stop();
-                dbg.printf("stepper disable!");
-                stepper->disable();
-                long stepsDone = stepper->getStepsCompleted();
+                //stepper->stop();
+                stopStepper();
+                //stepper->disable();
+                long stepsDone = getSteps();//stepperF->getCurrentPosition(); //stepper->getStepsCompleted();
                 float dosed = (float)((double)(stepsDone) / (double)stepsPermL);
                 if (dosed < 0) {
                     dosed = 0;
@@ -806,10 +1216,12 @@ class DoserPumpA4988 : public DoserPump {
         //     return true;
         // }
         
-        // bool retractImmediate() {
-        //     if (isPumping() || !retractionEnabled || retracted) {
+        // bool retract() {
+        //     if (isPumping()) {
         //         return false;
         //     }
+        //     doMove
+            
         //     stepper->enable();
         //     stepper->move(-(retractionmL * stepsPermL));
         //     retracted = true;
@@ -844,11 +1256,12 @@ void IRAM_ATTR DoserPumpA4988::sensorChange(void* ref) {
         
         switch (pump->onSensorInterruptAction) {
             case 1:  //1 is pump stop immediate and store number of steps
-                pump->sensorInterruptStepCount = pump->stepper->getStepsCompleted();
-                pump->stepper->stop();
+                pump->sensorInterruptStepCount = pump->getSteps();//stepperF->getCurrentPosition(); // pump->stepper->getStepsCompleted();
+                //pump->stepper->stop();
+                pump->stopStepper();    
                 break;
             case 2: //2 is just store number of steps
-                pump->sensorInterruptStepCount = pump->stepper->getStepsCompleted();
+                pump->sensorInterruptStepCount =pump->getSteps();//stepperF->getCurrentPosition(); // pump->stepper->getStepsCompleted();
                 break;
         }
     }

@@ -67,6 +67,8 @@ GbMsg* parseGbMsg(char* payload, int length) {
       return new DoserCalibratePortMsg(doc);
     } else if (msgType.equals(NAMEOF(DoserCalibrateEndedMsg)))  {
       return new DoserCalibrateEndedMsg(doc);
+    } else if (msgType.equals(NAMEOF(DoserRetractPortMsg)))  {
+      return new DoserRetractPortMsg(doc);
  //   } else if (msgType.equals(NAMEOF(TimeSourceMsg)))  {
 //      return new TimeSourceMsg(doc);
     } else if (msgType.equals(NAMEOF(PowerMonStatusMsg)))  {
